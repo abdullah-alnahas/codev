@@ -18,6 +18,22 @@ See http://localhost:{PORT}/open-file?path=codev/specs/0022-consult-tool-statele
 
 This opens files in the agent-farm annotation viewer when clicked in the dashboard terminal.
 
+## Critical Rules
+
+These rules are **non-negotiable** and must be followed at all times:
+
+### NEVER Do These:
+1. **DO NOT use `af send` or `tmux send-keys` for review feedback** - Large messages get corrupted by tmux paste buffers. Always use GitHub PR comments for review feedback.
+2. **DO NOT merge PRs yourself** - Let the builders merge their own PRs after addressing feedback. The builder owns the merge process.
+3. **DO NOT commit directly to main** - All changes go through PRs.
+4. **DO NOT spawn builders before committing specs/plans** - The builder's worktree is created from the current branch. If specs/plans aren't committed, the builder won't have access to them.
+
+### ALWAYS Do These:
+1. **Leave PR comments for reviews** - Use `gh pr comment` to post review feedback.
+2. **Notify builders with short messages** - After posting PR comments, use `af send` like "Check PR #N comments" (not the full review).
+3. **Let builders merge their PRs** - After approving, tell the builder to merge. Don't do it yourself.
+4. **Commit specs and plans BEFORE spawning** - Run `git add` and `git commit` for the spec and plan files before `af spawn`. The builder needs these files in the worktree.
+
 ## Responsibilities
 
 1. **Understand the big picture** - Maintain context of the entire project/epic
