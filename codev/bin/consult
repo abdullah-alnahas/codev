@@ -861,6 +861,11 @@ KEY_ISSUES: [List of critical issues if any, or "None"]
     print(f"Duration: {duration:.1f}s")
     print(f"Output: {pr_dir}/")
 
+    # Cleanup old mediated consultations (same retention as regular PR reviews)
+    removed = cleanup_old_pr_consultations(log_dir, keep_last=10)
+    if removed > 0:
+        print(f"Cleaned up {removed} old consultation(s)", file=sys.stderr)
+
 
 def do_pr(number: int, model: str, dry_run: bool, context: Optional[str] = None) -> None:
     """Execute a PR consultation with a single model.
