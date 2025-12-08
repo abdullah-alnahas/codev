@@ -3,6 +3,22 @@
 #
 # These helpers provide functions for testing the npm package
 # after installation, verifying CLI commands work as expected.
+#
+# USAGE:
+#   # Build and create tarball first
+#   cd packages/codev
+#   npm run build
+#   npm pack
+#
+#   # Run all E2E tests
+#   E2E_TARBALL=$(pwd)/cluesmith-codev-*.tgz bats ../../tests/e2e/
+#
+#   # Run single test file
+#   E2E_TARBALL=$(pwd)/cluesmith-codev-*.tgz bats ../../tests/e2e/init.bats
+#
+#   # Debug with custom tarball (e.g., from npm registry)
+#   npm pack @cluesmith/codev@1.0.0
+#   E2E_TARBALL=$(pwd)/cluesmith-codev-1.0.0.tgz bats ../../tests/e2e/
 
 # Setup XDG-sandboxed test environment
 # This prevents tests from polluting the user's home directory

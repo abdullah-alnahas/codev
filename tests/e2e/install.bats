@@ -47,6 +47,8 @@ teardown() {
   run ./node_modules/.bin/codev --version
   assert_success
   # Version should be a semantic version (e.g., 1.0.0, 1.1.0)
+  # TODO: CLI currently reports hardcoded version (1.0.0) instead of reading from package.json (1.1.0)
+  #       This should be investigated separately - see packages/codev/src/cli.ts:21
   [[ "$output" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]
 }
 
