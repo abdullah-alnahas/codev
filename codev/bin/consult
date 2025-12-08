@@ -9,6 +9,8 @@ Usage:
 
 Subcommands:
     pr <number>         Review a Pull Request
+    spec <number>       Review a Specification
+    plan <number>       Review an Implementation Plan
     general <query>     General consultation query
 
 Models (--model is REQUIRED):
@@ -18,9 +20,9 @@ Models (--model is REQUIRED):
 
 Examples:
     consult --model gemini pr 33
-    consult --model claude pr 33 --dry-run
-    consult --model pro general "Review this design"
-    echo "Review this" | consult --model gpt general
+    consult --model claude spec 38
+    consult --model pro plan 38
+    consult --model gpt general "Review this design"
 
 For parallel consultation, run multiple commands in separate shells.
 """
@@ -377,6 +379,214 @@ def cleanup_old_pr_consultations(consult_dir: Path, keep_last: int = 10) -> int:
     return removed
 
 
+def do_spec(number: int, model: str, dry_run: bool) -> None:
+    """Execute a spec consultation with a single model."""
+    codev_root = find_codev_root()
+    log_dir = codev_root / ".consult"
+    spec_dir = log_dir / f"spec-{str(number).zfill(4)}"
+
+    # Load .env
+    load_dotenv(codev_root)
+
+    print(f"[Spec Review #{number}]", file=sys.stderr)
+    print(f"Model: {model}", file=sys.stderr)
+
+    # Find spec file
+    spec_pattern = str(codev_root / "codev" / "specs" / f"{str(number).zfill(4)}-*.md")
+    spec_files = glob_module.glob(spec_pattern)
+    if not spec_files:
+        print(f"Error: Spec {number} not found", file=sys.stderr)
+        print(f"Looked for: {spec_pattern}", file=sys.stderr)
+        sys.exit(1)
+
+    spec_path = Path(spec_files[0])
+    spec_name = spec_path.stem
+
+    # Find plan file (optional)
+    plan_pattern = str(codev_root / "codev" / "plans" / f"{str(number).zfill(4)}-*.md")
+    plan_files = glob_module.glob(plan_pattern)
+    plan_path = Path(plan_files[0]) if plan_files else None
+
+    if dry_run:
+        print("\n[DRY RUN] Would execute:", file=sys.stderr)
+        print(f"  1. Read spec: {spec_path}", file=sys.stderr)
+        if plan_path:
+            print(f"  2. Read plan: {plan_path}", file=sys.stderr)
+        print(f"  3. Run consultation with: {model}", file=sys.stderr)
+        print(f"  4. Save output to {spec_dir}/{model}-full.txt", file=sys.stderr)
+        sys.exit(0)
+
+    # Create output directory
+    spec_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build query
+    query = f"""Review Specification: {spec_name}
+
+Please read and review this specification:
+- Spec file: {spec_path}
+"""
+    if plan_path:
+        query += f"- Plan file: {plan_path}\n"
+
+    query += """
+Please review:
+1. Clarity and completeness of requirements
+2. Technical feasibility
+3. Edge cases and error scenarios
+4. Security considerations
+5. Testing strategy
+6. Any ambiguities or missing details
+
+End your review with a verdict in this EXACT format:
+
+---
+VERDICT: [APPROVE | REQUEST_CHANGES | COMMENT]
+SUMMARY: [One-line summary of your review]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+---
+
+KEY_ISSUES: [List of critical issues if any, or "None"]
+"""
+
+    print(f"\nSpec: {spec_path}", file=sys.stderr)
+    if plan_path:
+        print(f"Plan: {plan_path}", file=sys.stderr)
+
+    # Run consultation
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"[{model.upper()}] Starting consultation...", file=sys.stderr)
+    print(f"{'='*60}\n", file=sys.stderr)
+
+    output_file = spec_dir / f"{model}-full.txt"
+    output, retcode, duration = run_model_consultation(
+        model, query, codev_root, output_file
+    )
+    log_query(log_dir, model, f"Spec #{number} review", duration)
+
+    # Extract and display verdict
+    verdict = extract_verdict(output)
+    verdict_file = spec_dir / f"{model}-verdict.txt"
+    verdict_file.write_text(verdict)
+
+    print(f"\n{'='*60}")
+    print(f"VERDICT [{model.upper()}] ({duration:.1f}s)")
+    print(f"{'='*60}")
+    print(verdict)
+
+    # Summary
+    print(f"\n{'='*60}")
+    print("SUMMARY")
+    print(f"{'='*60}")
+    print(f"Spec: #{number} ({spec_name})")
+    print(f"Model: {model}")
+    print(f"Duration: {duration:.1f}s")
+    print(f"Output: {spec_dir}/")
+
+
+def do_plan(number: int, model: str, dry_run: bool) -> None:
+    """Execute a plan consultation with a single model."""
+    codev_root = find_codev_root()
+    log_dir = codev_root / ".consult"
+    plan_dir = log_dir / f"plan-{str(number).zfill(4)}"
+
+    # Load .env
+    load_dotenv(codev_root)
+
+    print(f"[Plan Review #{number}]", file=sys.stderr)
+    print(f"Model: {model}", file=sys.stderr)
+
+    # Find plan file
+    plan_pattern = str(codev_root / "codev" / "plans" / f"{str(number).zfill(4)}-*.md")
+    plan_files = glob_module.glob(plan_pattern)
+    if not plan_files:
+        print(f"Error: Plan {number} not found", file=sys.stderr)
+        print(f"Looked for: {plan_pattern}", file=sys.stderr)
+        sys.exit(1)
+
+    plan_path = Path(plan_files[0])
+    plan_name = plan_path.stem
+
+    # Find spec file (optional but recommended)
+    spec_pattern = str(codev_root / "codev" / "specs" / f"{str(number).zfill(4)}-*.md")
+    spec_files = glob_module.glob(spec_pattern)
+    spec_path = Path(spec_files[0]) if spec_files else None
+
+    if dry_run:
+        print("\n[DRY RUN] Would execute:", file=sys.stderr)
+        print(f"  1. Read plan: {plan_path}", file=sys.stderr)
+        if spec_path:
+            print(f"  2. Read spec: {spec_path}", file=sys.stderr)
+        print(f"  3. Run consultation with: {model}", file=sys.stderr)
+        print(f"  4. Save output to {plan_dir}/{model}-full.txt", file=sys.stderr)
+        sys.exit(0)
+
+    # Create output directory
+    plan_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build query
+    query = f"""Review Implementation Plan: {plan_name}
+
+Please read and review this implementation plan:
+- Plan file: {plan_path}
+"""
+    if spec_path:
+        query += f"- Spec file: {spec_path} (for context)\n"
+
+    query += """
+Please review:
+1. Alignment with specification requirements
+2. Implementation approach and architecture
+3. Task breakdown and ordering
+4. Risk identification and mitigation
+5. Testing strategy
+6. Any missing steps or considerations
+
+End your review with a verdict in this EXACT format:
+
+---
+VERDICT: [APPROVE | REQUEST_CHANGES | COMMENT]
+SUMMARY: [One-line summary of your review]
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+---
+
+KEY_ISSUES: [List of critical issues if any, or "None"]
+"""
+
+    print(f"\nPlan: {plan_path}", file=sys.stderr)
+    if spec_path:
+        print(f"Spec: {spec_path}", file=sys.stderr)
+
+    # Run consultation
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"[{model.upper()}] Starting consultation...", file=sys.stderr)
+    print(f"{'='*60}\n", file=sys.stderr)
+
+    output_file = plan_dir / f"{model}-full.txt"
+    output, retcode, duration = run_model_consultation(
+        model, query, codev_root, output_file
+    )
+    log_query(log_dir, model, f"Plan #{number} review", duration)
+
+    # Extract and display verdict
+    verdict = extract_verdict(output)
+    verdict_file = plan_dir / f"{model}-verdict.txt"
+    verdict_file.write_text(verdict)
+
+    print(f"\n{'='*60}")
+    print(f"VERDICT [{model.upper()}] ({duration:.1f}s)")
+    print(f"{'='*60}")
+    print(verdict)
+
+    # Summary
+    print(f"\n{'='*60}")
+    print("SUMMARY")
+    print(f"{'='*60}")
+    print(f"Plan: #{number} ({plan_name})")
+    print(f"Model: {model}")
+    print(f"Duration: {duration:.1f}s")
+    print(f"Output: {plan_dir}/")
+
+
 def do_general(model: str, query: Optional[str], dry_run: bool) -> None:
     """Execute a general consultation with the specified model."""
     codev_root = find_codev_root()
@@ -579,6 +789,8 @@ Global Options:
 
 Subcommands:
   pr <number>            Review a Pull Request
+  spec <number>          Review a Specification
+  plan <number>          Review an Implementation Plan
   general <query>        General consultation query
 
 Subcommand Options:
@@ -586,9 +798,9 @@ Subcommand Options:
 
 Examples:
   consult --model gemini pr 33
-  consult --model claude pr 33 --dry-run
-  consult --model pro general "Review this design"
-  echo "Review this" | consult --model gpt general
+  consult --model claude spec 38
+  consult --model pro plan 38
+  consult --model gpt general "Review this design"
 
 For parallel consultation, run multiple commands in separate shells.
 """)
@@ -639,7 +851,7 @@ def main():
 
     # Need a subcommand
     if not remaining_args:
-        print("Error: Subcommand required (pr or general)", file=sys.stderr)
+        print("Error: Subcommand required (pr, spec, plan, or general)", file=sys.stderr)
         print("Usage: consult --model <model> <subcommand> [args]", file=sys.stderr)
         sys.exit(1)
 
@@ -727,9 +939,95 @@ Examples:
         query = " ".join(query_parts) if query_parts else None
         do_general(resolved_model, query, dry_run)
 
+    elif subcommand == "spec":
+        # Parse spec subcommand
+        if "--help" in sub_args or "-h" in sub_args:
+            print("""Usage: consult --model <model> spec <number> [options]
+
+Review a Specification.
+
+Finds and reads the spec file (and plan if available) for review.
+
+Arguments:
+  number                 Spec number to review [required]
+
+Options:
+  -n, --dry-run          Show what would be read without executing
+  -h, --help             Show this message and exit
+
+Examples:
+  consult --model gemini spec 38
+  consult --model claude spec 38 --dry-run
+""")
+            sys.exit(0)
+
+        if not sub_args:
+            print("Error: Spec number required", file=sys.stderr)
+            print("Usage: consult --model <model> spec <number>", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            spec_number = int(sub_args[0])
+        except ValueError:
+            print(f"Error: Invalid spec number '{sub_args[0]}'", file=sys.stderr)
+            sys.exit(1)
+
+        dry_run = False
+        for arg in sub_args[1:]:
+            if arg in ["--dry-run", "-n"]:
+                dry_run = True
+            else:
+                print(f"Error: Unknown option '{arg}'", file=sys.stderr)
+                sys.exit(1)
+
+        do_spec(spec_number, resolved_model, dry_run)
+
+    elif subcommand == "plan":
+        # Parse plan subcommand
+        if "--help" in sub_args or "-h" in sub_args:
+            print("""Usage: consult --model <model> plan <number> [options]
+
+Review an Implementation Plan.
+
+Finds and reads the plan file (and spec if available) for review.
+
+Arguments:
+  number                 Plan number to review [required]
+
+Options:
+  -n, --dry-run          Show what would be read without executing
+  -h, --help             Show this message and exit
+
+Examples:
+  consult --model gemini plan 38
+  consult --model pro plan 38 --dry-run
+""")
+            sys.exit(0)
+
+        if not sub_args:
+            print("Error: Plan number required", file=sys.stderr)
+            print("Usage: consult --model <model> plan <number>", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            plan_number = int(sub_args[0])
+        except ValueError:
+            print(f"Error: Invalid plan number '{sub_args[0]}'", file=sys.stderr)
+            sys.exit(1)
+
+        dry_run = False
+        for arg in sub_args[1:]:
+            if arg in ["--dry-run", "-n"]:
+                dry_run = True
+            else:
+                print(f"Error: Unknown option '{arg}'", file=sys.stderr)
+                sys.exit(1)
+
+        do_plan(plan_number, resolved_model, dry_run)
+
     else:
         print(f"Error: Unknown subcommand '{subcommand}'", file=sys.stderr)
-        print("Available subcommands: pr, general", file=sys.stderr)
+        print("Available subcommands: pr, spec, plan, general", file=sys.stderr)
         sys.exit(1)
 
 
