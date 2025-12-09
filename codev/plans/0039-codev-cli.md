@@ -438,3 +438,76 @@ If issues discovered after publish:
 - execa (process spawning)
 - better-sqlite3 (from agent-farm)
 - express (from agent-farm)
+
+---
+
+## TICK Amendment: 2025-12-09
+
+### Phase 8: Consolidate Consult Implementation
+
+**Goal**: Single TypeScript implementation, delete Python version
+
+#### 8.1 Port Codex Improvements to TypeScript
+
+Update `packages/codev/src/commands/consult/codex.ts`:
+
+```typescript
+// Before (using undocumented env var):
+const env = { CODEX_SYSTEM_MESSAGE: role };
+const args = ['exec', '--full-auto', query];
+
+// After (using official config flags):
+import { writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
+const instructionsFile = join(tmpdir(), `consult-${Date.now()}.md`);
+writeFileSync(instructionsFile, role);
+
+try {
+  const args = [
+    'exec',
+    '-c', `experimental_instructions_file=${instructionsFile}`,
+    '-c', 'model_reasoning_effort=low',
+    '--full-auto',
+    query
+  ];
+  // ... spawn codex
+} finally {
+  unlinkSync(instructionsFile);
+}
+```
+
+#### 8.2 Delete Python Implementation
+
+```bash
+# Delete the Python script
+rm codev/bin/consult
+
+# Create shell shim for backwards compatibility
+cat > codev/bin/consult << 'EOF'
+#!/bin/bash
+# Shim: delegates to TypeScript implementation
+exec npx @cluesmith/codev consult "$@"
+EOF
+chmod +x codev/bin/consult
+```
+
+#### 8.3 Update Documentation
+
+- Update CLAUDE.md/AGENTS.md consult examples to use `codev consult`
+- Remove Python/typer dependency mentions
+- Update test instructions
+
+#### 8.4 Update Tests
+
+- Ensure e2e consult tests work with TypeScript version
+- Remove any Python-specific test helpers
+
+### Exit Criteria (Amendment)
+
+- [ ] `codev consult --model codex spec 39` uses `experimental_instructions_file`
+- [ ] `codev consult --model codex` uses `model_reasoning_effort=low`
+- [ ] Python `codev/bin/consult` is gone (or is just a shim)
+- [ ] All consult tests pass
+- [ ] Documentation updated

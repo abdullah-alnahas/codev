@@ -1,7 +1,8 @@
 # Spec 0039: Codev CLI (First-Class Command)
 
-**Status:** spec-draft
+**Status:** integrated
 **Protocol:** SPIDER
+**Amended:** 2025-12-09 (TICK)
 **Priority:** High
 **Dependencies:** 0005 (TypeScript CLI), 0022 (Consult Tool)
 **Blocks:** None
@@ -317,3 +318,38 @@ The codev-skeleton is embedded in the npm package at build time:
 2. **Integration tests**: `codev init` creates valid project, `af` shim works
 3. **E2E tests**: Full workflow from install to `af spawn`
 4. **Mock strategy**: Mock external CLIs (gemini, codex, claude) in consult tests
+
+---
+
+## TICK Amendment: 2025-12-09
+
+### Problem
+
+The original spec called for porting consult to TypeScript, but the Python implementation (`codev/bin/consult`) was retained in parallel. This causes:
+
+1. **Drift**: Improvements to one version don't reach the other (e.g., Spec 0043's Codex optimizations only updated Python)
+2. **Confusion**: Two implementations with different behaviors
+3. **Maintenance burden**: Two codebases to maintain
+
+### Amendment Scope
+
+1. **Port Codex improvements to TypeScript**: Apply the changes from Spec 0043:
+   - Replace `CODEX_SYSTEM_MESSAGE` env var with `experimental_instructions_file` config flag
+   - Add `model_reasoning_effort=low` for faster responses
+   - Proper temp file cleanup in finally blocks
+
+2. **Delete Python consult**: Remove `codev/bin/consult` entirely and replace with a shim:
+   ```bash
+   #!/bin/bash
+   exec npx @cluesmith/codev consult "$@"
+   ```
+
+   Or better: just delete it and update documentation to use `codev consult` or the `consult` binary from the npm package.
+
+### Success Criteria
+
+- [ ] TypeScript consult has Codex `experimental_instructions_file` approach
+- [ ] TypeScript consult has `model_reasoning_effort=low` tuning
+- [ ] Python `codev/bin/consult` deleted
+- [ ] All existing `consult` invocations work via TypeScript version
+- [ ] Tests updated/passing

@@ -126,7 +126,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0039"
     title: "Codev CLI (First-Class Command)"
     summary: "Unified codev command as primary entry point: init, adopt, doctor, update, tower, consult"
-    status: integrated
+    status: implementing
     priority: high
     release: null
     files:
@@ -135,7 +135,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0005", "0022"]
     tags: [cli, npm, architecture]
-    notes: "4-way reviewed. Decisions: MERGE agent-farm, PORT consult to TS, SEPARATE binaries. ~3-4 days effort."
+    notes: "TICK amendment 2025-12-09: Port Codex improvements to TS, delete Python consult"
 
   - id: "0040"
     title: "TICK as SPIDER Amendment"
@@ -800,16 +800,16 @@ Projects that are paused or canceled.
   - id: "0044"
     title: "Architect-Builder Workflow Clarity"
     summary: "Document and enforce clear workflow stages between architect and builder roles"
-    status: conceived
+    status: specified
     priority: high
     release: null
     files:
       spec: codev/specs/0044-architect-builder-workflow.md
-      plan: null
+      plan: codev/plans/0044-architect-builder-workflow.md
       review: null
     dependencies: []
     tags: [protocol, workflow, spider]
-    notes: "Clarify the 7-stage workflow: conceived → spec-drafted → planned → implementing → pr-ready → committed → integrated. Delete SPIDER-SOLO (redundant)."
+    notes: "9-stage workflow with clear human gates. Delete SPIDER-SOLO, add consult --type parameter, create review type prompts."
 
 ## Next Available Number
 
