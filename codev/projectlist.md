@@ -125,7 +125,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0039"
     title: "Codev CLI (First-Class Command)"
     summary: "Unified codev command as primary entry point: init, adopt, doctor, update, tower, consult"
-    status: implementing
+    status: committed
     priority: high
     release: null
     files:
@@ -134,7 +134,7 @@ Projects currently in development (conceived through committed), sorted by prior
       review: null
     dependencies: ["0005", "0022"]
     tags: [cli, npm, architecture]
-    notes: "TICK amendment 2025-12-09: Port Codex improvements to TS, delete Python consult"
+    notes: "PR #84 merged 2025-12-09. TICK-001 (consult TS consolidation) + TICK-002 (embedded skeleton)."
 
   - id: "0040"
     title: "TICK as SPIDER Amendment"
@@ -813,7 +813,7 @@ Projects that are paused or canceled.
   - id: "0045"
     title: "Project List UI"
     summary: "Visual dashboard tab showing project status across 7 lifecycle stages with welcome onboarding"
-    status: planned
+    status: committed
     priority: high
     release: null
     files:
@@ -822,7 +822,7 @@ Projects that are paused or canceled.
       review: null
     dependencies: ["0007"]
     tags: [ui, dashboard, onboarding]
-    notes: "Uncloseable tab, 7-column Kanban view, projects march across as work progresses"
+    notes: "PR #85 merged 2025-12-09. Projects tab with Kanban view, welcome screen, parser, terminal states."
 
 ## Next Available Number
 
