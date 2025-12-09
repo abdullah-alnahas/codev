@@ -176,6 +176,16 @@ async function cleanupBuilder(builder: Builder, force?: boolean): Promise<void> 
   // Remove from state
   removeBuilder(builder.id);
 
+  // Always prune stale worktree entries to prevent "can't find session" errors
+  // This catches any orphaned worktrees from crashes or manual kills
+  if (!isShellMode) {
+    try {
+      await run('git worktree prune', { cwd: config.projectRoot });
+    } catch {
+      // Non-fatal - prune is best-effort cleanup
+    }
+  }
+
   logger.blank();
   logger.success(`Builder ${builder.id} cleaned up!`);
 }

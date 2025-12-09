@@ -694,6 +694,15 @@ export async function spawn(options: SpawnOptions): Promise<void> {
   validateSpawnOptions(options);
 
   const config = getConfig();
+
+  // Prune stale worktrees before spawning to prevent "can't find session" errors
+  // This catches orphaned worktrees from crashes, manual kills, or incomplete cleanups
+  try {
+    await run('git worktree prune', { cwd: config.projectRoot });
+  } catch {
+    // Non-fatal - continue with spawn even if prune fails
+  }
+
   const mode = getSpawnMode(options);
 
   switch (mode) {
