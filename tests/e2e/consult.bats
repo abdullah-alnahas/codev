@@ -108,3 +108,22 @@ teardown() {
   # Dry run should be documented in help
   assert_output --partial "dry"
 }
+
+# === Codex Configuration (Spec 0043) ===
+
+@test "consult codex dry-run shows experimental_instructions_file config" {
+  # Verify we use the official experimental_instructions_file instead of CODEX_SYSTEM_MESSAGE
+  # The dry-run should show the -c experimental_instructions_file flag
+  skip_if_no_codex
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+  assert_output --partial "experimental_instructions_file"
+}
+
+@test "consult codex dry-run shows model_reasoning_effort=low" {
+  # Verify we use low reasoning effort for faster responses
+  skip_if_no_codex
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+  assert_output --partial "model_reasoning_effort=low"
+}
