@@ -127,3 +127,21 @@ teardown() {
   assert_success
   assert_output --partial "model_reasoning_effort=low"
 }
+
+@test "consult codex dry-run cleans up temp file" {
+  # Verify temp file created for experimental_instructions_file is cleaned up
+  # The dry-run creates and then removes the temp file
+  skip_if_no_codex
+
+  # Count temp .md files before
+  local before_count=$(ls /tmp/*.md 2>/dev/null | wc -l || echo 0)
+
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+
+  # Count temp .md files after - should be same or less (cleanup happened)
+  local after_count=$(ls /tmp/*.md 2>/dev/null | wc -l || echo 0)
+
+  # After count should not be greater than before (temp file was cleaned up)
+  [[ "$after_count" -le "$before_count" ]]
+}
