@@ -154,3 +154,27 @@ refute_output_contains() {
   fi
   return 0
 }
+
+# Skip test if codex CLI is not installed
+# Usage: skip_if_no_codex
+skip_if_no_codex() {
+  if ! command -v codex &> /dev/null; then
+    skip "codex CLI not installed"
+  fi
+}
+
+# Skip test if gemini CLI is not installed
+# Usage: skip_if_no_gemini
+skip_if_no_gemini() {
+  if ! command -v gemini &> /dev/null; then
+    skip "gemini CLI not installed"
+  fi
+}
+
+# Skip test if claude CLI is not installed
+# Usage: skip_if_no_claude
+skip_if_no_claude() {
+  if ! command -v claude &> /dev/null; then
+    skip "claude CLI not installed"
+  fi
+}

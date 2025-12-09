@@ -108,3 +108,40 @@ teardown() {
   # Dry run should be documented in help
   assert_output --partial "dry"
 }
+
+# === Codex Configuration (Spec 0043) ===
+
+@test "consult codex dry-run shows experimental_instructions_file config" {
+  # Verify we use the official experimental_instructions_file instead of CODEX_SYSTEM_MESSAGE
+  # The dry-run should show the -c experimental_instructions_file flag
+  skip_if_no_codex
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+  assert_output --partial "experimental_instructions_file"
+}
+
+@test "consult codex dry-run shows model_reasoning_effort=low" {
+  # Verify we use low reasoning effort for faster responses
+  skip_if_no_codex
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+  assert_output --partial "model_reasoning_effort=low"
+}
+
+@test "consult codex dry-run cleans up temp file" {
+  # Verify temp file created for experimental_instructions_file is cleaned up
+  # The dry-run creates and then removes the temp file
+  skip_if_no_codex
+
+  # Count temp .md files before
+  local before_count=$(ls /tmp/*.md 2>/dev/null | wc -l || echo 0)
+
+  run ./node_modules/.bin/consult --model codex general "test" --dry-run
+  assert_success
+
+  # Count temp .md files after - should be same or less (cleanup happened)
+  local after_count=$(ls /tmp/*.md 2>/dev/null | wc -l || echo 0)
+
+  # After count should not be greater than before (temp file was cleaned up)
+  [[ "$after_count" -le "$before_count" ]]
+}
