@@ -141,7 +141,7 @@ Projects currently in development (conceived through committed), sorted by prior
     files:
       spec: codev/specs/0039-codev-cli.md
       plan: codev/plans/0039-codev-cli.md
-      review: null
+      review: codev/reviews/0039-codev-cli.md
     ticks: [001, 002, 003]
     dependencies: ["0005", "0022"]
     tags: [cli, npm, architecture]
@@ -1265,13 +1265,13 @@ Projects that are paused or canceled.
   - id: "0049"
     title: "Preview Mode Annotations"
     summary: "Allow adding REVIEW comments by clicking on elements in markdown preview mode"
-    status: conceived
+    status: on_hold
     priority: medium
     release: null
     files:
       spec: codev/specs/0049-preview-annotations.md
-      plan: codev/plans/0049-preview-annotations.md
-      review: codev/reviews/0049-preview-annotations.md
+      plan: null
+      review: null
     dependencies: ["0048"]
     tags: [dashboard, ui, markdown, annotations]
     timestamps:
@@ -1282,7 +1282,7 @@ Projects that are paused or canceled.
       implemented_at: null
       committed_at: null
       integrated_at: null
-    notes: ""
+    notes: "ON HOLD - 3-way review (Codex, Gemini) both REQUEST_CHANGES. Need prototype to verify marked.js line tracking feasibility before proceeding."
 ```
 
 ## Next Available Number
