@@ -841,9 +841,23 @@ Projects that are paused or canceled.
     tags: [documentation, cli]
     notes: "PR #87 merged 2025-12-10."
 
+  - id: "0047"
+    title: "Expert Tips - Codev Internals"
+    summary: "Documentation covering Codev internals for advanced users and contributors"
+    status: conceived
+    priority: medium
+    release: null
+    files:
+      spec: null
+      plan: null
+      review: null
+    dependencies: []
+    tags: [documentation, internals]
+    notes: ""
+
 ## Next Available Number
 
-**0047** - Reserve this number for your next project
+**0048** - Reserve this number for your next project
 
 ---
 
