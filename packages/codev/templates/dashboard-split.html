@@ -2418,6 +2418,17 @@
       'integrated': "INTGR'D"
     };
 
+    // Stage tooltips explaining purpose and exit criteria
+    const STAGE_TOOLTIPS = {
+      'conceived': "CONCEIVED: Idea captured, spec draft exists.\nExit: Human approves the specification.",
+      'specified': "SPECIFIED: Spec approved by human.\nExit: Implementation plan is created.",
+      'planned': "PLANNED: Implementation plan ready.\nExit: Builder is spawned to implement.",
+      'implementing': "IMPLEMENTING: Builder actively coding.\nExit: Code complete, tests pass, PR created.",
+      'implemented': "IMPLEMENTED: PR ready for review.\nExit: Architect reviews, Builder merges PR.",
+      'committed': "COMMITTED: PR merged to main.\nExit: Human validates in production.",
+      'integrated': "INTEGRATED: Complete! Validated in production.\nThis is the goal state."
+    };
+
     // Get stage index (for comparison)
     function getStageIndex(status) {
       return LIFECYCLE_STAGES.indexOf(status);
@@ -2649,7 +2660,7 @@
           <thead>
             <tr role="row">
               <th role="columnheader">Project</th>
-              ${LIFECYCLE_STAGES.map(stage => `<th role="columnheader">${STAGE_HEADERS[stage]}</th>`).join('')}
+              ${LIFECYCLE_STAGES.map(stage => `<th role="columnheader" title="${STAGE_TOOLTIPS[stage]}">${STAGE_HEADERS[stage]}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -2722,7 +2733,7 @@
     function renderInfoHeader() {
       return `
         <div class="projects-info">
-          <p><strong>Active Projects</strong> — This view shows all projects currently in progress.</p>
+          <p><strong>Active Projects</strong> — Our goal is to move all projects to INTGR'D (integrated). Hover over column headers to learn about each stage.</p>
           <p>To add projects, update status, or approve stages, use the <strong>Architect</strong> terminal on the left.</p>
           <p>Docs: <a href="#" onclick="openProjectFile('codev/docs/lifecycle.md'); return false;">Lifecycle</a> · <a href="#" onclick="openProjectFile('codev/docs/commands/overview.md'); return false;">CLI Reference</a> · <a href="#" onclick="openProjectFile('codev/protocols/spider/protocol.md'); return false;">SPIDER Protocol</a> · <a href="https://github.com/cluesmith/codev#readme" target="_blank">README</a></p>
         </div>
