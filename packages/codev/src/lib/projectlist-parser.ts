@@ -11,6 +11,16 @@ export interface ProjectFiles {
   review?: string | null;
 }
 
+export interface ProjectTimestamps {
+  conceived_at?: string | null;
+  specified_at?: string | null;
+  planned_at?: string | null;
+  implementing_at?: string | null;
+  implemented_at?: string | null;
+  committed_at?: string | null;
+  integrated_at?: string | null;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -22,6 +32,7 @@ export interface Project {
   dependencies?: string[];
   tags?: string[];
   ticks?: string[];
+  timestamps?: ProjectTimestamps;
   notes?: string;
 }
 
@@ -93,6 +104,27 @@ export function parseProjectEntry(text: string): Partial<Project> {
     if (key === 'spec' || key === 'plan' || key === 'review') {
       if (!project.files) project.files = {};
       (project.files as Record<string, string | null>)[key] =
+        value === 'null' ? null : value;
+      continue;
+    }
+
+    // Handle nested timestamps object
+    if (key === 'timestamps') {
+      project.timestamps = {};
+      continue;
+    }
+    const timestampFields = [
+      'conceived_at',
+      'specified_at',
+      'planned_at',
+      'implementing_at',
+      'implemented_at',
+      'committed_at',
+      'integrated_at',
+    ];
+    if (timestampFields.includes(key)) {
+      if (!project.timestamps) project.timestamps = {};
+      (project.timestamps as Record<string, string | null>)[key] =
         value === 'null' ? null : value;
       continue;
     }

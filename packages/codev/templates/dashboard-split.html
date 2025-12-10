@@ -2246,6 +2246,19 @@
           continue;
         }
 
+        // Handle nested timestamps object
+        if (key === 'timestamps') {
+          project.timestamps = {};
+          continue;
+        }
+        const timestampFields = ['conceived_at', 'specified_at', 'planned_at',
+                                 'implementing_at', 'implemented_at', 'committed_at', 'integrated_at'];
+        if (timestampFields.includes(key)) {
+          if (!project.timestamps) project.timestamps = {};
+          project.timestamps[key] = value === 'null' ? null : value;
+          continue;
+        }
+
         // Handle arrays (simple inline format)
         if (key === 'dependencies' || key === 'tags' || key === 'ticks') {
           if (value.startsWith('[') && value.endsWith(']')) {
