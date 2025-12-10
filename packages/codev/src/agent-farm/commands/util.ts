@@ -22,13 +22,13 @@ interface UtilOptions {
 async function tryDashboardApi(name?: string): Promise<boolean> {
   const state = loadState();
 
-  // Dashboard runs on architectPort + 1
+  // Dashboard port from config
   if (!state.architect) {
     return false;
   }
 
   const config = getConfig();
-  const dashboardPort = config.architectPort + 1;
+  const dashboardPort = config.dashboardPort;
 
   try {
     const response = await fetch(`http://localhost:${dashboardPort}/api/tabs/shell`, {

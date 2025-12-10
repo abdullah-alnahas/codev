@@ -14,6 +14,7 @@ import {
   dbUtilToUtilTerminal,
   dbAnnotationToAnnotation,
 } from './db/types.js';
+import { isPortConflictError } from './db/errors.js';
 
 /**
  * Load complete state from database
@@ -166,6 +167,22 @@ export function addUtil(util: UtilTerminal): void {
     pid: util.pid,
     tmuxSession: util.tmuxSession ?? null,
   });
+}
+
+/**
+ * Try to add a utility terminal, returning false on port conflict
+ * Used to handle concurrent port allocation race conditions
+ */
+export function tryAddUtil(util: UtilTerminal): boolean {
+  try {
+    addUtil(util);
+    return true;
+  } catch (err) {
+    if (isPortConflictError(err)) {
+      return false;
+    }
+    throw err;
+  }
 }
 
 /**

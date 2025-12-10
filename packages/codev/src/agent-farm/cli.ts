@@ -137,6 +137,25 @@ export async function runAgentFarm(args: string[]): Promise<void> {
       }
     });
 
+  // Consult command - runs consult in a dashboard terminal
+  program
+    .command('consult <subcommand> <target>')
+    .description('Run consult command in a dashboard terminal')
+    .requiredOption('-m, --model <model>', 'Model to use (gemini, codex, claude)')
+    .option('-t, --type <type>', 'Review type (spec-review, plan-review, impl-review, pr-ready, integration-review)')
+    .action(async (subcommand, target, options) => {
+      const { consult } = await import('./commands/consult.js');
+      try {
+        await consult(subcommand, target, {
+          model: options.model,
+          type: options.type,
+        });
+      } catch (error) {
+        logger.error(error instanceof Error ? error.message : String(error));
+        process.exit(1);
+      }
+    });
+
   // Open command
   program
     .command('open <file>')

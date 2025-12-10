@@ -22,6 +22,7 @@ import {
   removeAnnotation,
   getUtils,
   addUtil,
+  tryAddUtil,
   removeUtil,
   getBuilder,
   getBuilders,
@@ -773,6 +774,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/tabs/shell') {
       const body = await parseJsonBody(req);
       const name = (body.name as string) || undefined;
+      const command = (body.command as string) || undefined;
 
       // Validate name if provided (prevent command injection)
       if (name && !/^[a-zA-Z0-9_-]+$/.test(name)) {
@@ -795,34 +797,60 @@ const server = http.createServer(async (req, res) => {
       const utilName = name || `shell-${shellState.utils.length + 1}`;
       const sessionName = `af-shell-${id}`;
 
-      // Find available port (pass state to avoid already-allocated ports)
-      const utilPort = await findAvailablePort(CONFIG.utilPortStart, shellState);
-
-      // Get shell command
+      // Get shell command - if command provided, run it then keep shell open
       const shell = process.env.SHELL || '/bin/bash';
+      const shellCommand = command
+        ? `${shell} -c '${command.replace(/'/g, "'\\''")}; exec ${shell}'`
+        : shell;
 
-      // Start tmux session with ttyd attached
-      const pid = spawnTmuxWithTtyd(sessionName, shell, utilPort, projectRoot);
+      // Retry loop for concurrent port allocation race conditions
+      const MAX_PORT_RETRIES = 5;
+      let utilPort: number | null = null;
+      let pid: number | null = null;
 
-      if (!pid) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Failed to start shell');
-        return;
+      for (let attempt = 0; attempt < MAX_PORT_RETRIES; attempt++) {
+        // Get fresh state on each attempt to see newly allocated ports
+        const currentState = loadState();
+        const candidatePort = await findAvailablePort(CONFIG.utilPortStart, currentState);
+
+        // Start tmux session with ttyd attached
+        const spawnedPid = spawnTmuxWithTtyd(sessionName, shellCommand, candidatePort, projectRoot);
+
+        if (!spawnedPid) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Failed to start shell');
+          return;
+        }
+
+        // Wait for ttyd to be ready
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Try to add util record - may fail if port was taken by concurrent request
+        const util: UtilTerminal = {
+          id,
+          name: utilName,
+          port: candidatePort,
+          pid: spawnedPid,
+          tmuxSession: sessionName,
+        };
+
+        if (tryAddUtil(util)) {
+          // Success - port reserved
+          utilPort = candidatePort;
+          pid = spawnedPid;
+          break;
+        }
+
+        // Port conflict - kill the spawned process and retry
+        console.log(`[info] Port ${candidatePort} conflict, retrying (attempt ${attempt + 1}/${MAX_PORT_RETRIES})`);
+        await killProcessGracefully(spawnedPid);
       }
 
-      // Wait for ttyd to be ready
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Create util record
-      const util: UtilTerminal = {
-        id,
-        name: utilName,
-        port: utilPort,
-        pid,
-        tmuxSession: sessionName,
-      };
-
-      addUtil(util);
+      if (utilPort === null || pid === null) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Failed to allocate port after multiple retries');
+        return;
+      }
 
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ id, port: utilPort, name: utilName }));

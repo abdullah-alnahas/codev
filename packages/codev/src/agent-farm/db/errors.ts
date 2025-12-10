@@ -34,6 +34,15 @@ export function withRetry<T>(fn: () => T, maxRetries = 3): T {
 }
 
 /**
+ * Check if an error is a UNIQUE constraint violation (port conflict)
+ */
+export function isPortConflictError(err: unknown): boolean {
+  const sqliteErr = err as SqliteError;
+  return sqliteErr.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+    (sqliteErr.message?.includes('UNIQUE constraint failed') ?? false);
+}
+
+/**
  * Check if better-sqlite3 is available and provide helpful error messages
  */
 export function checkDatabaseAvailability(): void {
