@@ -22,6 +22,7 @@ import {
   removeAnnotation,
   getUtils,
   addUtil,
+  tryAddUtil,
   removeUtil,
   getBuilder,
   getBuilders,
@@ -30,6 +31,7 @@ import {
   clearState,
   getArchitect,
 } from '../state.js';
+import { spawnTtyd } from '../utils/shell.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,13 +100,11 @@ function escapeHtml(str: string): string {
 function findTemplatePath(filename: string, required: true): string;
 function findTemplatePath(filename: string, required?: false): string | null;
 function findTemplatePath(filename: string, required = false): string | null {
-  // 1. Try relative to compiled output (dist/servers/ -> templates/)
-  const pkgPath = path.resolve(__dirname, '../templates/', filename);
+  // Templates are at package root: packages/codev/templates/
+  // From compiled: dist/agent-farm/servers/ -> ../../../templates/
+  // From source: src/agent-farm/servers/ -> ../../../templates/
+  const pkgPath = path.resolve(__dirname, '../../../templates/', filename);
   if (fs.existsSync(pkgPath)) return pkgPath;
-
-  // 2. Try relative to source (src/servers/ -> templates/)
-  const devPath = path.resolve(__dirname, '../../templates/', filename);
-  if (fs.existsSync(devPath)) return devPath;
 
   if (required) {
     throw new Error(`Template not found: ${filename}`);
@@ -338,6 +338,9 @@ function spawnTmuxWithTtyd(
         { cwd, stdio: 'ignore' }
       );
 
+      // Hide the tmux status bar (dashboard has its own tabs)
+      execSync(`tmux set-option -t "${sessionName}" status off`, { stdio: 'ignore' });
+
       // Enable mouse support in the session
       execSync(`tmux set-option -t "${sessionName}" -g mouse on`, { stdio: 'ignore' });
 
@@ -355,26 +358,15 @@ function spawnTmuxWithTtyd(
     }
 
     // Start ttyd to attach to the tmux session
-    // Using simple theme arg to avoid shell escaping issues
-    // Use custom index.html for file path click-to-open functionality (optional)
     const customIndexPath = findTemplatePath('ttyd-index.html');
-    const ttydArgs = [
-      '-W',
-      '-p', String(ttydPort),
-      '-t', 'theme={"background":"#000000"}',
-      '-t', 'fontSize=14',
-      '-t', 'rightClickSelectsWord=true',  // Enable word selection on right-click for better UX
-    ];
+    const ttydProcess = spawnTtyd({
+      port: ttydPort,
+      sessionName,
+      cwd,
+      customIndexPath: customIndexPath ?? undefined,
+    });
 
-    // Add custom index if it exists
-    if (customIndexPath) {
-      ttydArgs.push('-I', customIndexPath);
-    }
-
-    ttydArgs.push('tmux', 'attach-session', '-t', sessionName);
-
-    const pid = spawnDetached('ttyd', ttydArgs, cwd);
-    return pid;
+    return ttydProcess?.pid ?? null;
   } catch (err) {
     console.error(`Failed to create tmux session ${sessionName}:`, (err as Error).message);
     // Cleanup any partial session
@@ -439,6 +431,9 @@ function spawnWorktreeBuilder(
       { cwd: worktreePath, stdio: 'ignore' }
     );
 
+    // Hide the tmux status bar (dashboard has its own tabs)
+    execSync(`tmux set-option -t "${sessionName}" status off`, { stdio: 'ignore' });
+
     // Enable mouse support
     execSync(`tmux set-option -t "${sessionName}" -g mouse on`, { stdio: 'ignore' });
     execSync(`tmux set-option -t "${sessionName}" -g set-clipboard on`, { stdio: 'ignore' });
@@ -448,23 +443,16 @@ function spawnWorktreeBuilder(
     execSync(`tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`, { stdio: 'ignore' });
     execSync(`tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"`, { stdio: 'ignore' });
 
-    // Start ttyd
+    // Start ttyd connecting to the tmux session
     const customIndexPath = findTemplatePath('ttyd-index.html');
-    const ttydArgs = [
-      '-W',
-      '-p', String(builderPort),
-      '-t', 'theme={"background":"#000000"}',
-      '-t', 'fontSize=14',
-      '-t', 'rightClickSelectsWord=true',
-    ];
+    const ttydProcess = spawnTtyd({
+      port: builderPort,
+      sessionName,
+      cwd: worktreePath,
+      customIndexPath: customIndexPath ?? undefined,
+    });
 
-    if (customIndexPath) {
-      ttydArgs.push('-I', customIndexPath);
-    }
-
-    ttydArgs.push('tmux', 'attach-session', '-t', sessionName);
-
-    const pid = spawnDetached('ttyd', ttydArgs, worktreePath);
+    const pid = ttydProcess?.pid ?? null;
 
     if (!pid) {
       // Cleanup on failure
@@ -792,6 +780,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/tabs/shell') {
       const body = await parseJsonBody(req);
       const name = (body.name as string) || undefined;
+      const command = (body.command as string) || undefined;
 
       // Validate name if provided (prevent command injection)
       if (name && !/^[a-zA-Z0-9_-]+$/.test(name)) {
@@ -814,34 +803,60 @@ const server = http.createServer(async (req, res) => {
       const utilName = name || `shell-${shellState.utils.length + 1}`;
       const sessionName = `af-shell-${id}`;
 
-      // Find available port (pass state to avoid already-allocated ports)
-      const utilPort = await findAvailablePort(CONFIG.utilPortStart, shellState);
-
-      // Get shell command
+      // Get shell command - if command provided, run it then keep shell open
       const shell = process.env.SHELL || '/bin/bash';
+      const shellCommand = command
+        ? `${shell} -c '${command.replace(/'/g, "'\\''")}; exec ${shell}'`
+        : shell;
 
-      // Start tmux session with ttyd attached
-      const pid = spawnTmuxWithTtyd(sessionName, shell, utilPort, projectRoot);
+      // Retry loop for concurrent port allocation race conditions
+      const MAX_PORT_RETRIES = 5;
+      let utilPort: number | null = null;
+      let pid: number | null = null;
 
-      if (!pid) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Failed to start shell');
-        return;
+      for (let attempt = 0; attempt < MAX_PORT_RETRIES; attempt++) {
+        // Get fresh state on each attempt to see newly allocated ports
+        const currentState = loadState();
+        const candidatePort = await findAvailablePort(CONFIG.utilPortStart, currentState);
+
+        // Start tmux session with ttyd attached
+        const spawnedPid = spawnTmuxWithTtyd(sessionName, shellCommand, candidatePort, projectRoot);
+
+        if (!spawnedPid) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Failed to start shell');
+          return;
+        }
+
+        // Wait for ttyd to be ready
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Try to add util record - may fail if port was taken by concurrent request
+        const util: UtilTerminal = {
+          id,
+          name: utilName,
+          port: candidatePort,
+          pid: spawnedPid,
+          tmuxSession: sessionName,
+        };
+
+        if (tryAddUtil(util)) {
+          // Success - port reserved
+          utilPort = candidatePort;
+          pid = spawnedPid;
+          break;
+        }
+
+        // Port conflict - kill the spawned process and retry
+        console.log(`[info] Port ${candidatePort} conflict, retrying (attempt ${attempt + 1}/${MAX_PORT_RETRIES})`);
+        await killProcessGracefully(spawnedPid);
       }
 
-      // Wait for ttyd to be ready
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Create util record
-      const util: UtilTerminal = {
-        id,
-        name: utilName,
-        port: utilPort,
-        pid,
-        tmuxSession: sessionName,
-      };
-
-      addUtil(util);
+      if (utilPort === null || pid === null) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Failed to allocate port after multiple retries');
+        return;
+      }
 
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ id, port: utilPort, name: utilName }));
@@ -1065,6 +1080,43 @@ const server = http.createServer(async (req, res) => {
 
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(html);
+      return;
+    }
+
+    // Read file contents (for Projects tab to read projectlist.md)
+    if (req.method === 'GET' && url.pathname === '/file') {
+      const filePath = url.searchParams.get('path');
+
+      if (!filePath) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Missing path parameter');
+        return;
+      }
+
+      // Validate path is within project root (prevent path traversal)
+      const fullPath = validatePathWithinProject(filePath);
+      if (!fullPath) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Path must be within project directory');
+        return;
+      }
+
+      // Check file exists
+      if (!fs.existsSync(fullPath)) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end(`File not found: ${filePath}`);
+        return;
+      }
+
+      // Read and return file contents
+      try {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(content);
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Error reading file: ' + (err as Error).message);
+      }
       return;
     }
 

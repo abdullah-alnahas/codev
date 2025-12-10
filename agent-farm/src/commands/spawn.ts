@@ -14,13 +14,28 @@ import { readdir } from 'node:fs/promises';
 import type { SpawnOptions, Builder, Config, BuilderType } from '../types.js';
 import { getConfig, ensureDirectories, getResolvedCommands } from '../utils/index.js';
 import { logger, fatal } from '../utils/logger.js';
-import { run, spawnDetached, commandExists, findAvailablePort } from '../utils/shell.js';
+import { run, spawnDetached, commandExists, findAvailablePort, spawnTtyd } from '../utils/shell.js';
 import { loadState, upsertBuilder } from '../state.js';
 
 /**
  * Generate a short 4-character base64-encoded ID
  * Uses URL-safe base64 (a-z, A-Z, 0-9, -, _) for filesystem-safe IDs
  */
+/**
+ * Get the project name from config (basename of projectRoot)
+ * Used to namespace tmux sessions and prevent cross-project collisions
+ */
+function getProjectName(config: Config): string {
+  return basename(config.projectRoot);
+}
+
+/**
+ * Get a namespaced tmux session name: builder-{project}-{id}
+ */
+function getSessionName(config: Config, builderId: string): string {
+  return `builder-${getProjectName(config)}-${builderId}`;
+}
+
 function generateShortId(): string {
   // Generate random 24-bit number and base64 encode to 4 chars
   const num = Math.floor(Math.random() * 0xFFFFFF);
@@ -218,7 +233,7 @@ async function startBuilderSession(
   roleSource: string | null,
 ): Promise<{ port: number; pid: number; sessionName: string }> {
   const port = await findFreePort(config);
-  const sessionName = `builder-${builderId}`;
+  const sessionName = getSessionName(config, builderId);
 
   logger.info('Creating tmux session...');
 
@@ -249,6 +264,7 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 
   // Create tmux session running the script
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
@@ -262,25 +278,19 @@ exec ${baseCmd} "$(cat '${promptFile}')"
   // Start ttyd connecting to the tmux session
   logger.info('Starting builder terminal...');
   const customIndexPath = resolve(config.templatesDir, 'ttyd-index.html');
-  const ttydArgs = [
-    '-W',
-    '-p', String(port),
-    '-t', 'theme={"background":"#000000"}',
-    '-t', 'rightClickSelectsWord=true',  // Enable word selection on right-click for better UX
-  ];
-
-  if (existsSync(customIndexPath)) {
-    ttydArgs.push('-I', customIndexPath);
+  const hasCustomIndex = existsSync(customIndexPath);
+  if (hasCustomIndex) {
     logger.info('Using custom terminal with file click support');
   }
 
-  ttydArgs.push('tmux', 'attach-session', '-t', sessionName);
-
-  const ttydProcess = spawnDetached('ttyd', ttydArgs, {
+  const ttydProcess = spawnTtyd({
+    port,
+    sessionName,
     cwd: worktreePath,
+    customIndexPath: hasCustomIndex ? customIndexPath : undefined,
   });
 
-  if (!ttydProcess.pid) {
+  if (!ttydProcess?.pid) {
     fatal('Failed to start ttyd process for builder');
   }
 
@@ -302,6 +312,7 @@ async function startShellSession(
 
   // Shell mode: just launch Claude with no prompt
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
@@ -312,27 +323,19 @@ async function startShellSession(
   await run('tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
   await run('tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
 
-  // Start ttyd
+  // Start ttyd connecting to the tmux session
   logger.info('Starting shell terminal...');
   const customIndexPath = resolve(config.templatesDir, 'ttyd-index.html');
-  const ttydArgs = [
-    '-W',
-    '-p', String(port),
-    '-t', 'theme={"background":"#000000"}',
-    '-t', 'rightClickSelectsWord=true',  // Enable word selection on right-click for better UX
-  ];
+  const hasCustomIndex = existsSync(customIndexPath);
 
-  if (existsSync(customIndexPath)) {
-    ttydArgs.push('-I', customIndexPath);
-  }
-
-  ttydArgs.push('tmux', 'attach-session', '-t', sessionName);
-
-  const ttydProcess = spawnDetached('ttyd', ttydArgs, {
+  const ttydProcess = spawnTtyd({
+    port,
+    sessionName,
     cwd: config.projectRoot,
+    customIndexPath: hasCustomIndex ? customIndexPath : undefined,
   });
 
-  if (!ttydProcess.pid) {
+  if (!ttydProcess?.pid) {
     fatal('Failed to start ttyd process for shell');
   }
 
@@ -381,7 +384,7 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   }
   initialPrompt += ` Start by reading the spec${hasPlan ? ' and plan' : ''}, then begin implementation.`;
 
-  const builderPrompt = initialPrompt;
+  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${initialPrompt}`;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, 'builder');
@@ -446,7 +449,7 @@ async function spawnTask(options: SpawnOptions, config: Config): Promise<void> {
     prompt += `\n\nRelevant files to consider:\n${options.files.map(f => `- ${f}`).join('\n')}`;
   }
 
-  const builderPrompt = prompt;
+  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${prompt}`;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, 'builder');
@@ -608,7 +611,7 @@ async function spawnWorktree(options: SpawnOptions, config: Config): Promise<voi
 
   // Worktree mode: launch Claude with no prompt, but in the worktree directory
   const port = await findFreePort(config);
-  const sessionName = `builder-${builderId}`;
+  const sessionName = getSessionName(config, builderId);
 
   logger.info('Creating tmux session...');
 
@@ -633,6 +636,7 @@ exec ${commands.builder}
 
   // Create tmux session running the launch script
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
@@ -643,28 +647,22 @@ exec ${commands.builder}
   await run('tmux bind-key -T copy-mode MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
   await run('tmux bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"');
 
-  // Start ttyd
+  // Start ttyd connecting to the tmux session
   logger.info('Starting worktree terminal...');
   const customIndexPath = resolve(config.codevDir, 'templates', 'ttyd-index.html');
-  const ttydArgs = [
-    '-W',
-    '-p', String(port),
-    '-t', 'theme={"background":"#000000"}',
-    '-t', 'rightClickSelectsWord=true',  // Enable word selection on right-click for better UX
-  ];
-
-  if (existsSync(customIndexPath)) {
-    ttydArgs.push('-I', customIndexPath);
+  const hasCustomIndex = existsSync(customIndexPath);
+  if (hasCustomIndex) {
     logger.info('Using custom terminal with file click support');
   }
 
-  ttydArgs.push('tmux', 'attach-session', '-t', sessionName);
-
-  const ttydProcess = spawnDetached('ttyd', ttydArgs, {
+  const ttydProcess = spawnTtyd({
+    port,
+    sessionName,
     cwd: worktreePath,
+    customIndexPath: hasCustomIndex ? customIndexPath : undefined,
   });
 
-  if (!ttydProcess.pid) {
+  if (!ttydProcess?.pid) {
     fatal('Failed to start ttyd process for worktree');
   }
 
@@ -699,6 +697,15 @@ export async function spawn(options: SpawnOptions): Promise<void> {
   validateSpawnOptions(options);
 
   const config = getConfig();
+
+  // Prune stale worktrees before spawning to prevent "can't find session" errors
+  // This catches orphaned worktrees from crashes, manual kills, or incomplete cleanups
+  try {
+    await run('git worktree prune', { cwd: config.projectRoot });
+  } catch {
+    // Non-fatal - continue with spawn even if prune fails
+  }
+
   const mode = getSpawnMode(options);
 
   switch (mode) {

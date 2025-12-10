@@ -338,6 +338,9 @@ function spawnTmuxWithTtyd(
         { cwd, stdio: 'ignore' }
       );
 
+      // Hide the tmux status bar (dashboard has its own tabs)
+      execSync(`tmux set-option -t "${sessionName}" status off`, { stdio: 'ignore' });
+
       // Enable mouse support in the session
       execSync(`tmux set-option -t "${sessionName}" -g mouse on`, { stdio: 'ignore' });
 
@@ -427,6 +430,9 @@ function spawnWorktreeBuilder(
       `tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${builderCommand}"`,
       { cwd: worktreePath, stdio: 'ignore' }
     );
+
+    // Hide the tmux status bar (dashboard has its own tabs)
+    execSync(`tmux set-option -t "${sessionName}" status off`, { stdio: 'ignore' });
 
     // Enable mouse support
     execSync(`tmux set-option -t "${sessionName}" -g mouse on`, { stdio: 'ignore' });
