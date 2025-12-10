@@ -7,6 +7,7 @@
 **Dependencies:** 0005 (TypeScript CLI), 0022 (Consult Tool)
 **Blocks:** None
 **Consultation:** 4-way review (Gemini, Codex, Claude, Architect) - all decisions resolved
+<!-- REVIEW(@architect): That's interesting -->
 
 ---
 

@@ -1,17 +1,18 @@
 #!/bin/bash
-# Thin wrapper - forwards all commands to @cluesmith/codev agent-farm
-# Uses readlink to handle symlinks (e.g., if symlinked to /usr/local/bin)
-SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Thin wrapper - forwards all commands to @cluesmith/codev af
+# This script allows projects to use ./codev/bin/agent-farm without
+# having codev installed globally.
 
-# Try new unified CLI first, fall back to old location for transition period
-if [ -f "$PROJECT_ROOT/packages/codev/dist/cli.js" ]; then
-  exec node "$PROJECT_ROOT/packages/codev/dist/cli.js" agent-farm "$@"
-elif [ -f "$PROJECT_ROOT/agent-farm/dist/index.js" ]; then
-  exec node "$PROJECT_ROOT/agent-farm/dist/index.js" "$@"
-else
-  echo "Error: Could not find agent-farm CLI" >&2
-  echo "Run 'npm install' in the codev root directory" >&2
-  exit 1
+# First, try the globally installed 'af' command (from @cluesmith/codev)
+if command -v af &> /dev/null; then
+  exec af "$@"
 fi
+
+# Fall back to npx if af is not globally installed
+if command -v npx &> /dev/null; then
+  exec npx @cluesmith/codev af "$@"
+fi
+
+echo "Error: Could not find 'af' command" >&2
+echo "Install @cluesmith/codev globally: npm install -g @cluesmith/codev" >&2
+exit 1
