@@ -400,6 +400,28 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: null
     notes: "Phase 2: Stateful. Keep CLI running via stdio. Maintain session until closed. Depends on 0022."
 
+  - id: "0052"
+    title: "Agent Farm Internals Documentation"
+    summary: "Comprehensive arch.md section on af internals: ports, tmux, state, worktrees, dashboard"
+    status: implementing
+    priority: high
+    release: null
+    files:
+      spec: codev/specs/0052-agent-farm-internals-docs.md
+      plan: null
+      review: null
+    dependencies: []
+    tags: [documentation, architecture, agent-farm]
+    timestamps:
+      conceived_at: "2025-12-11T11:15:00-08:00"
+      specified_at: "2025-12-11T11:15:00-08:00"
+      planned_at: null
+      implementing_at: "2025-12-11T11:15:00-08:00"
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: "Documentation task - no plan needed"
+
   - id: "0051"
     title: "Codev Cheatsheet"
     summary: "Comprehensive cheatsheet with philosophies, concepts (protocols, roles, hierarchy), and tools reference"
