@@ -264,6 +264,7 @@ exec ${baseCmd} "$(cat '${promptFile}')"
 
   // Create tmux session running the script
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
@@ -311,6 +312,7 @@ async function startShellSession(
 
   // Shell mode: just launch Claude with no prompt
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${config.projectRoot}" "${baseCmd}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
@@ -634,6 +636,7 @@ exec ${commands.builder}
 
   // Create tmux session running the launch script
   await run(`tmux new-session -d -s "${sessionName}" -x 200 -y 50 -c "${worktreePath}" "${scriptPath}"`);
+  await run(`tmux set-option -t "${sessionName}" status off`);
 
   // Enable mouse scrolling in tmux
   await run('tmux set -g mouse on');
