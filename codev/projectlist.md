@@ -400,6 +400,28 @@ Projects currently in development (conceived through committed), sorted by prior
       integrated_at: null
     notes: "Phase 2: Stateful. Keep CLI running via stdio. Maintain session until closed. Depends on 0022."
 
+  - id: "0050"
+    title: "Dashboard Polish"
+    summary: "UX improvements: clickable title only for expand, show TICKs in project view, poll for projectlist.md creation"
+    status: conceived
+    priority: medium
+    release: null
+    files:
+      spec: codev/specs/0050-dashboard-polish.md
+      plan: null
+      review: null
+    dependencies: []
+    tags: [dashboard, ui, ux]
+    timestamps:
+      conceived_at: "2025-12-11T10:40:00-08:00"
+      specified_at: null
+      planned_at: null
+      implementing_at: null
+      implemented_at: null
+      committed_at: null
+      integrated_at: null
+    notes: ""
+
   - id: "0035"
     title: "MAINTAIN Protocol"
     summary: "Rename CLEANUP to MAINTAIN, expand scope to include documentation maintenance (arch.md, lessons-learned.md, CLAUDE.md/AGENTS.md sync)"
