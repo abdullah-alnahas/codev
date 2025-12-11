@@ -475,22 +475,27 @@ Review type prompts are in `codev/roles/review-types/`. The prompt is appended t
 
 ### Parallel Consultation (3-Way Reviews)
 
-For 3-way reviews, run consultations in parallel using separate Bash tool calls:
+**IMPORTANT**: 3-way reviews should ALWAYS be run:
+1. **In parallel** - All three models at once, not sequentially
+2. **In background** - Use `run_in_background: true` so you can continue working
 
 ```bash
-# All three in parallel (separate Bash tool calls in same message)
-consult --model gemini spec 39
-consult --model codex spec 39
-consult --model claude spec 39
+# CORRECT: Three separate Bash tool calls with run_in_background: true
+# This lets you continue working while reviews run
+consult --model gemini pr 95
+consult --model codex pr 95
+consult --model claude pr 95
 ```
 
 Or use background processes in a single shell:
 ```bash
-consult --model gemini spec 39 &
-consult --model codex spec 39 &
-consult --model claude spec 39 &
+consult --model gemini pr 95 &
+consult --model codex pr 95 &
+consult --model claude pr 95 &
 wait
 ```
+
+**Why background?** Each consultation takes 60-250 seconds. Running sequentially wastes time; running in foreground blocks other work.
 
 ### Model Aliases
 
