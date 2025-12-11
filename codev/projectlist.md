@@ -403,13 +403,13 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0052"
     title: "Agent Farm Internals Documentation"
     summary: "Comprehensive arch.md section on af internals: ports, tmux, state, worktrees, dashboard"
-    status: implementing
+    status: committed
     priority: high
     release: null
     files:
       spec: codev/specs/0052-agent-farm-internals-docs.md
       plan: null
-      review: null
+      review: codev/reviews/0052-agent-farm-internals-docs.md
     dependencies: []
     tags: [documentation, architecture, agent-farm]
     timestamps:
@@ -417,10 +417,10 @@ Projects currently in development (conceived through committed), sorted by prior
       specified_at: "2025-12-11T11:15:00-08:00"
       planned_at: null
       implementing_at: "2025-12-11T11:15:00-08:00"
-      implemented_at: null
-      committed_at: null
+      implemented_at: "2025-12-11T12:30:00-08:00"
+      committed_at: "2025-12-11T12:45:00-08:00"
       integrated_at: null
-    notes: "Documentation task - no plan needed"
+    notes: "PR #99 merged 2025-12-11"
 
   - id: "0051"
     title: "Codev Cheatsheet"
