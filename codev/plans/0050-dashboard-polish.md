@@ -19,7 +19,7 @@ Three UX improvements to the agent-farm dashboard:
 ### Phase 1: Project Row Click Behavior
 
 **Files to modify:**
-- `packages/codev/src/agent-farm/templates/dashboard.html`
+- `packages/codev/templates/dashboard-split.html`
 
 **Changes:**
 
@@ -55,8 +55,7 @@ Three UX improvements to the agent-farm dashboard:
 ### Phase 2: Show TICKs in Project View
 
 **Files to modify:**
-- `packages/codev/src/agent-farm/templates/dashboard.html`
-- `packages/codev/src/agent-farm/lib/projectlist-parser.ts` (if exists, or create)
+- `packages/codev/templates/dashboard-split.html`
 
 **Changes:**
 
@@ -100,7 +99,7 @@ Three UX improvements to the agent-farm dashboard:
 ### Phase 3: Poll for projectlist.md Creation
 
 **Files to modify:**
-- `packages/codev/src/agent-farm/templates/dashboard.html` (starter page section)
+- `packages/codev/templates/dashboard-split.html` (starter page section)
 - `packages/codev/src/agent-farm/servers/dashboard-server.ts`
 
 **Changes:**
@@ -144,8 +143,8 @@ Three UX improvements to the agent-farm dashboard:
 
 | File | Changes |
 |------|---------|
-| `templates/dashboard.html` | Title-only click, TICK display, polling JS |
-| `servers/dashboard-server.ts` | Add `/api/projectlist-exists` endpoint |
+| `packages/codev/templates/dashboard-split.html` | Title-only click, TICK display, polling JS |
+| `packages/codev/src/agent-farm/servers/dashboard-server.ts` | Add `/api/projectlist-exists` endpoint |
 
 ---
 
