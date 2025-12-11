@@ -409,6 +409,33 @@ If validation fails, investigate and fix before creating PR.
 
 ---
 
+## 3-Way Review (Before PR)
+
+After completing all tasks and validation, run a 3-way consultation review:
+
+```bash
+# Run all three in parallel
+consult --model gemini --type impl-review pr <branch-name> &
+consult --model codex --type impl-review pr <branch-name> &
+consult --model claude --type impl-review pr <branch-name> &
+wait
+```
+
+**Focus areas for maintenance review:**
+- Are deletions justified and documented?
+- Is arch.md accurate and complete?
+- Are lessons-learned.md entries actionable?
+- Any regressions or side effects?
+
+**Verdicts:**
+- All APPROVE → Create PR
+- Any REQUEST_CHANGES → Address feedback, re-run review
+- Conflicting opinions → Use judgment, document decision
+
+Only create the PR after the 3-way review passes.
+
+---
+
 ## Rollback Strategy
 
 ### For code changes
@@ -444,7 +471,7 @@ MAINTAIN is an **operational protocol**, not a feature development protocol:
 | Spec | No |
 | Plan | No |
 | Review | No |
-| Consultation | No (human review of PR is sufficient) |
+| 3-Way Consultation | **Yes** (before creating PR) |
 
 **Exception**: If MAINTAIN reveals need for architectural changes, those should follow SPIDER.
 
