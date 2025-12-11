@@ -738,14 +738,20 @@ Projects currently in development (conceived through committed), sorted by prior
 
 ```yaml
 releases:
+  - version: "v1.2.0"
+    name: "Cordoba"
+    status: active
+    target_date: "2025-12-11"
+    notes: "Documentation, cheatsheet, agent farm internals, codev import command"
+
   - version: "v1.1.0"
-    name: null
-    status: planning
+    name: "Bauhaus"
+    status: released
     target_date: null
     notes: "Polish and improvements"
 
   - version: "v1.0.0"
-    name: "Architect"
+    name: "Alhambra"
     status: released
     target_date: "2025-12-05"
     notes: "First stable release with full architect-builder workflow, tower dashboard, and migration tooling"
