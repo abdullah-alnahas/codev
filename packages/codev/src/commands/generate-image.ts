@@ -24,7 +24,7 @@ export interface GenerateImageOptions {
   output?: string;
   resolution?: string;
   aspect?: string;
-  ref?: string;
+  ref?: string[];
 }
 
 /**
@@ -59,6 +59,9 @@ function readPrompt(promptOrPath: string): string {
 /**
  * Main generate-image function
  */
+// Maximum reference images supported by Nano Banana Pro
+const MAX_REFERENCE_IMAGES = 14;
+
 export async function generateImage(
   prompt: string,
   options: GenerateImageOptions
@@ -66,7 +69,7 @@ export async function generateImage(
   const output = options.output || 'output.png';
   const resolution = (options.resolution || '1K') as Resolution;
   const aspect = (options.aspect || '1:1') as AspectRatio;
-  const ref = options.ref;
+  const refs = options.ref || [];
 
   // Validate resolution
   if (!RESOLUTIONS.includes(resolution)) {
@@ -86,14 +89,24 @@ export async function generateImage(
     process.exit(1);
   }
 
-  // Validate reference image if provided
-  let referenceImagePath: string | undefined;
-  if (ref) {
-    referenceImagePath = resolve(ref);
-    if (!existsSync(referenceImagePath)) {
+  // Validate reference image count
+  if (refs.length > MAX_REFERENCE_IMAGES) {
+    console.error(
+      chalk.red('Error:') +
+        ` Too many reference images (${refs.length}). Maximum is ${MAX_REFERENCE_IMAGES}.`
+    );
+    process.exit(1);
+  }
+
+  // Validate reference images exist
+  const referenceImagePaths: string[] = [];
+  for (const ref of refs) {
+    const refPath = resolve(ref);
+    if (!existsSync(refPath)) {
       console.error(chalk.red('Error:') + ` Reference image not found: ${ref}`);
       process.exit(1);
     }
+    referenceImagePaths.push(refPath);
   }
 
   // Read prompt
@@ -103,32 +116,39 @@ export async function generateImage(
   // Create client
   const client = getClient();
 
-  // Build contents - either just prompt or prompt with reference image
+  // Build contents - either just prompt or prompt with reference images
   let contents: string | Array<{ inlineData: { mimeType: string; data: string } } | string>;
 
-  if (referenceImagePath) {
-    const imageData = readFileSync(referenceImagePath);
-    const base64Data = imageData.toString('base64');
-    // Determine mime type from extension
-    const ext = referenceImagePath.toLowerCase().split('.').pop();
-    const mimeType =
-      ext === 'png'
-        ? 'image/png'
-        : ext === 'gif'
-          ? 'image/gif'
-          : ext === 'webp'
-            ? 'image/webp'
-            : 'image/jpeg';
+  if (referenceImagePaths.length > 0) {
+    const imageParts: Array<{ inlineData: { mimeType: string; data: string } } | string> = [];
 
-    contents = [
-      {
+    for (const imagePath of referenceImagePaths) {
+      const imageData = readFileSync(imagePath);
+      const base64Data = imageData.toString('base64');
+      // Determine mime type from extension
+      const ext = imagePath.toLowerCase().split('.').pop();
+      const mimeType =
+        ext === 'png'
+          ? 'image/png'
+          : ext === 'gif'
+            ? 'image/gif'
+            : ext === 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
+
+      imageParts.push({
         inlineData: {
           mimeType,
           data: base64Data,
         },
-      },
-      promptText,
-    ];
+      });
+    }
+
+    // Add prompt after all images
+    imageParts.push(promptText);
+    contents = imageParts;
+
+    console.log(chalk.blue('Using') + ` ${referenceImagePaths.length} reference image(s)`);
   } else {
     contents = promptText;
   }

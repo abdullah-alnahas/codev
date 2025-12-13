@@ -99,10 +99,22 @@ describe('generate-image', () => {
       vi.mocked(existsSync).mockReturnValue(false);
 
       await expect(
-        generateImage('test prompt', { ref: '/nonexistent/image.jpg' })
+        generateImage('test prompt', { ref: ['/nonexistent/image.jpg'] })
       ).rejects.toThrow('process.exit called');
       expect(mockConsoleError).toHaveBeenCalledWith(
         expect.stringContaining('Reference image not found')
+      );
+    });
+
+    it('rejects too many reference images', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      const tooManyRefs = Array(15).fill('image.jpg');
+
+      await expect(
+        generateImage('test prompt', { ref: tooManyRefs })
+      ).rejects.toThrow('process.exit called');
+      expect(mockConsoleError).toHaveBeenCalledWith(
+        expect.stringContaining('Too many reference images')
       );
     });
   });
@@ -247,8 +259,8 @@ describe('generate-image', () => {
     });
   });
 
-  describe('reference image', () => {
-    it('includes reference image in contents', async () => {
+  describe('reference images', () => {
+    it('includes single reference image in contents', async () => {
       vi.mocked(existsSync).mockReturnValue(true);
       vi.mocked(readFileSync).mockReturnValue(Buffer.from('fake image data'));
       mockGenerateContent.mockResolvedValue({
@@ -259,7 +271,7 @@ describe('generate-image', () => {
         }],
       });
 
-      await generateImage('Edit this image', { ref: 'reference.png' });
+      await generateImage('Edit this image', { ref: ['reference.png'] });
 
       expect(mockGenerateContent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -273,6 +285,27 @@ describe('generate-image', () => {
           ]),
         })
       );
+    });
+
+    it('includes multiple reference images in contents', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(readFileSync).mockReturnValue(Buffer.from('fake image data'));
+      mockGenerateContent.mockResolvedValue({
+        candidates: [{
+          content: {
+            parts: [{ inlineData: { data: 'dGVzdA==', mimeType: 'image/png' } }],
+          },
+        }],
+      });
+
+      await generateImage('Combine these images', { ref: ['img1.png', 'img2.jpg', 'img3.webp'] });
+
+      const call = mockGenerateContent.mock.calls[0][0];
+      expect(call.contents).toHaveLength(4); // 3 images + 1 prompt
+      expect(call.contents[0].inlineData.mimeType).toBe('image/png');
+      expect(call.contents[1].inlineData.mimeType).toBe('image/jpeg');
+      expect(call.contents[2].inlineData.mimeType).toBe('image/webp');
+      expect(call.contents[3]).toBe('Combine these images');
     });
   });
 });

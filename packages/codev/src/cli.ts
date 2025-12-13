@@ -160,7 +160,7 @@ program
   .option('-o, --output <path>', 'Output file path', 'output.png')
   .option('-r, --resolution <res>', 'Resolution: 1K, 2K, or 4K', '1K')
   .option('-a, --aspect <ratio>', 'Aspect ratio: 1:1, 16:9, 9:16, 3:4, 4:3, 3:2, 2:3', '1:1')
-  .option('--ref <path>', 'Reference image for image-to-image generation')
+  .option('--ref <path...>', 'Reference image(s) for image-to-image generation (up to 14)')
   .action(async (prompt, options) => {
     try {
       await generateImage(prompt, {

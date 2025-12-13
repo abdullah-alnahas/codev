@@ -88,7 +88,7 @@ Uses Google's Nano Banana Pro (gemini-3-pro-image-preview) model.
 | `-o, --output` | Output file path (default: output.png) |
 | `-r, --resolution` | Resolution: 1K, 2K, or 4K |
 | `-a, --aspect` | Aspect ratio: 1:1, 16:9, 9:16, 3:4, 4:3, 3:2, 2:3 |
-| `--ref` | Reference image for image-to-image generation |
+| `--ref` | Reference image(s) for image-to-image generation (up to 14) |
 
 **Examples:**
 
@@ -99,8 +99,11 @@ generate-image "A sunset over mountains" -o sunset.png
 # High resolution with custom aspect ratio
 generate-image "Futuristic cityscape" -r 4K -a 16:9 -o city.png
 
-# Image editing with reference
+# Image editing with single reference
 generate-image "Make it look like winter" --ref photo.jpg -o winter.png
+
+# Multi-image composition (up to 14 images)
+generate-image "Combine these into a collage" --ref img1.png --ref img2.png --ref img3.png -o collage.png
 ```
 
 **Requires:** `GEMINI_API_KEY` environment variable. Get one at https://aistudio.google.com/apikey
