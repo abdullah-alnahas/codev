@@ -2,7 +2,7 @@
 
 ## Summary
 
-Implementation of an AI-powered image generation CLI command using Google's Gemini and Imagen models. The tool is integrated as a TypeScript command in the @cluesmith/codev package.
+Implementation of an AI-powered image generation CLI command using Google's Nano Banana Pro model (gemini-3-pro-image-preview). The tool is integrated as a TypeScript command in the @cluesmith/codev package.
 
 ## Implementation Overview
 
@@ -10,8 +10,8 @@ Implementation of an AI-powered image generation CLI command using Google's Gemi
 
 | File | Change Type | Description |
 |------|------------|-------------|
-| `packages/codev/src/commands/generate-image.ts` | New | Main implementation (~275 lines) |
-| `packages/codev/src/__tests__/generate-image.test.ts` | New | Test suite (15 tests) |
+| `packages/codev/src/commands/generate-image.ts` | New | Main implementation (~180 lines) |
+| `packages/codev/src/__tests__/generate-image.test.ts` | New | Test suite (12 tests) |
 | `packages/codev/bin/generate-image.js` | New | Standalone binary shim |
 | `packages/codev/src/cli.ts` | Modified | CLI integration |
 | `packages/codev/package.json` | Modified | Added @google/genai dependency and bin entry |
@@ -19,7 +19,7 @@ Implementation of an AI-powered image generation CLI command using Google's Gemi
 
 ### Features Implemented
 
-- **Model Support**: Gemini (gemini-2.5-flash-image, gemini-3-pro-image) and Imagen (imagen-4)
+- **Model**: Nano Banana Pro (gemini-3-pro-image-preview)
 - **Options**: Output path, resolution (1K/2K/4K), aspect ratio, reference image
 - **Prompt Sources**: Direct text or .txt file
 - **Error Handling**: API key validation, input validation, informative error messages
@@ -29,8 +29,7 @@ Implementation of an AI-powered image generation CLI command using Google's Gemi
 
 ### Claude Review
 - **Verdict**: APPROVE
-- **Notes**: Meets all spec requirements, 15 passing tests, clean code following existing patterns
-- **Minor suggestion**: Could add test for reference image with Gemini model
+- **Notes**: Meets all spec requirements, clean code following existing patterns
 
 ### Gemini Review
 - **Verdict**: APPROVE
@@ -39,10 +38,6 @@ Implementation of an AI-powered image generation CLI command using Google's Gemi
 ### Codex Review
 - **Verdict**: APPROVE
 - **Notes**: Extensive tests covering validation, success paths, and error cases
-- **Suggestions** (non-blocking):
-  1. Consider explicit error for missing .txt files vs silent fallback
-  2. Add positive test for reference image flow
-  3. Could iterate all candidates in Gemini response
 
 ## Spec Compliance
 
@@ -52,7 +47,6 @@ Implementation of an AI-powered image generation CLI command using Google's Gemi
 | Output path option (-o/--output) | Implemented |
 | Resolution option (-r/--resolution) | Implemented |
 | Aspect ratio option (-a/--aspect) | Implemented |
-| Model option (-m/--model) | Implemented |
 | Reference image option (--ref) | Implemented |
 | API Integration via google-genai SDK | Implemented |
 | GEMINI_API_KEY from environment | Implemented (with GOOGLE_API_KEY fallback) |

@@ -80,13 +80,14 @@ See [consult.md](consult.md) for full documentation.
 
 ### generate-image - AI Image Generation
 
+Uses Google's Nano Banana Pro (gemini-3-pro-image-preview) model.
+
 | Option | Description |
 |--------|-------------|
 | `<prompt>` | Text prompt or path to .txt file |
 | `-o, --output` | Output file path (default: output.png) |
 | `-r, --resolution` | Resolution: 1K, 2K, or 4K |
 | `-a, --aspect` | Aspect ratio: 1:1, 16:9, 9:16, 3:4, 4:3, 3:2, 2:3 |
-| `-m, --model` | Model: gemini-3-pro-image, gemini-2.5-flash-image, imagen-4 |
 | `--ref` | Reference image for image-to-image generation |
 
 **Examples:**

@@ -1,5 +1,5 @@
 /**
- * generate-image - AI-powered image generation using Google's Gemini/Imagen models
+ * generate-image - AI-powered image generation using Google's Gemini model (Nano Banana Pro)
  *
  * Uses the @google/genai SDK with GEMINI_API_KEY from environment.
  */
@@ -9,6 +9,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import chalk from 'chalk';
 
+// The model to use for image generation
+const MODEL = 'gemini-3-pro-image-preview';
+
 // Resolution options
 const RESOLUTIONS = ['1K', '2K', '4K'] as const;
 type Resolution = (typeof RESOLUTIONS)[number];
@@ -17,18 +20,10 @@ type Resolution = (typeof RESOLUTIONS)[number];
 const ASPECT_RATIOS = ['1:1', '16:9', '9:16', '3:4', '4:3', '3:2', '2:3'] as const;
 type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
-// Model aliases and their full names
-const MODELS: Record<string, string> = {
-  'gemini-3-pro-image': 'gemini-3-pro-image-preview',
-  'gemini-2.5-flash-image': 'gemini-2.5-flash-image',
-  'imagen-4': 'imagen-4.0-generate-001',
-};
-
 export interface GenerateImageOptions {
   output?: string;
   resolution?: string;
   aspect?: string;
-  model?: string;
   ref?: string;
 }
 
@@ -62,60 +57,52 @@ function readPrompt(promptOrPath: string): string {
 }
 
 /**
- * Generate image using Imagen model
+ * Main generate-image function
  */
-async function generateWithImagen(
-  client: GoogleGenAI,
+export async function generateImage(
   prompt: string,
-  model: string,
-  aspectRatio: string,
-  outputPath: string
+  options: GenerateImageOptions
 ): Promise<void> {
-  const response = await client.models.generateImages({
-    model,
-    prompt,
-    config: {
-      numberOfImages: 1,
-      aspectRatio,
-    },
-  });
+  const output = options.output || 'output.png';
+  const resolution = (options.resolution || '1K') as Resolution;
+  const aspect = (options.aspect || '1:1') as AspectRatio;
+  const ref = options.ref;
 
-  if (!response.generatedImages || response.generatedImages.length === 0) {
-    console.error(chalk.red('Error:') + ' No images generated');
-    process.exit(1);
-  }
-
-  const generatedImage = response.generatedImages[0];
-  if (generatedImage?.raiFilteredReason) {
+  // Validate resolution
+  if (!RESOLUTIONS.includes(resolution)) {
     console.error(
-      chalk.yellow('Filter reason:') + ` ${generatedImage.raiFilteredReason}`
+      chalk.red('Error:') +
+        ` Invalid resolution '${resolution}'. Use: ${RESOLUTIONS.join(', ')}`
     );
-  }
-
-  const imageBytes = generatedImage?.image?.imageBytes;
-  if (!imageBytes) {
-    console.error(chalk.red('Error:') + ' No image data in response');
     process.exit(1);
   }
 
-  // Write base64-encoded image to file
-  const buffer = Buffer.from(imageBytes, 'base64');
-  writeFileSync(outputPath, buffer);
-  console.log(chalk.green('Image saved to') + ` ${outputPath}`);
-}
+  // Validate aspect ratio
+  if (!ASPECT_RATIOS.includes(aspect)) {
+    console.error(
+      chalk.red('Error:') +
+        ` Invalid aspect ratio '${aspect}'. Use: ${ASPECT_RATIOS.join(', ')}`
+    );
+    process.exit(1);
+  }
 
-/**
- * Generate image using Gemini model with native image output
- */
-async function generateWithGemini(
-  client: GoogleGenAI,
-  prompt: string,
-  model: string,
-  aspectRatio: string,
-  resolution: string,
-  outputPath: string,
-  referenceImagePath?: string
-): Promise<void> {
+  // Validate reference image if provided
+  let referenceImagePath: string | undefined;
+  if (ref) {
+    referenceImagePath = resolve(ref);
+    if (!existsSync(referenceImagePath)) {
+      console.error(chalk.red('Error:') + ` Reference image not found: ${ref}`);
+      process.exit(1);
+    }
+  }
+
+  // Read prompt
+  const promptText = readPrompt(prompt);
+  console.log(chalk.blue('Generating image with') + ` ${MODEL}...`);
+
+  // Create client
+  const client = getClient();
+
   // Build contents - either just prompt or prompt with reference image
   let contents: string | Array<{ inlineData: { mimeType: string; data: string } } | string>;
 
@@ -140,22 +127,22 @@ async function generateWithGemini(
           data: base64Data,
         },
       },
-      prompt,
+      promptText,
     ];
   } else {
-    contents = prompt;
+    contents = promptText;
   }
 
   // Build image config
   const imageConfig: { aspectRatio: string; imageSize?: string } = {
-    aspectRatio,
+    aspectRatio: aspect,
   };
   if (resolution !== '1K') {
     imageConfig.imageSize = resolution;
   }
 
   const response = await client.models.generateContent({
-    model,
+    model: MODEL,
     contents,
     config: {
       responseModalities: ['IMAGE'],
@@ -181,95 +168,12 @@ async function generateWithGemini(
       console.log(chalk.blue('Model response:') + ` ${part.text}`);
     } else if (part.inlineData?.data) {
       const buffer = Buffer.from(part.inlineData.data, 'base64');
-      writeFileSync(outputPath, buffer);
-      console.log(chalk.green('Image saved to') + ` ${outputPath}`);
+      writeFileSync(output, buffer);
+      console.log(chalk.green('Image saved to') + ` ${output}`);
       return;
     }
   }
 
   console.error(chalk.red('Error:') + ' No image in response');
   process.exit(1);
-}
-
-/**
- * Main generate-image function
- */
-export async function generateImage(
-  prompt: string,
-  options: GenerateImageOptions
-): Promise<void> {
-  const output = options.output || 'output.png';
-  const resolution = (options.resolution || '1K') as Resolution;
-  const aspect = (options.aspect || '1:1') as AspectRatio;
-  const modelArg = options.model || 'gemini-2.5-flash-image';
-  const ref = options.ref;
-
-  // Validate resolution
-  if (!RESOLUTIONS.includes(resolution)) {
-    console.error(
-      chalk.red('Error:') +
-        ` Invalid resolution '${resolution}'. Use: ${RESOLUTIONS.join(', ')}`
-    );
-    process.exit(1);
-  }
-
-  // Validate aspect ratio
-  if (!ASPECT_RATIOS.includes(aspect)) {
-    console.error(
-      chalk.red('Error:') +
-        ` Invalid aspect ratio '${aspect}'. Use: ${ASPECT_RATIOS.join(', ')}`
-    );
-    process.exit(1);
-  }
-
-  // Resolve model name
-  const resolvedModel = MODELS[modelArg] || modelArg;
-
-  // Validate reference image
-  if (ref) {
-    const refPath = resolve(ref);
-    if (!existsSync(refPath)) {
-      console.error(chalk.red('Error:') + ` Reference image not found: ${ref}`);
-      process.exit(1);
-    }
-
-    // Check for incompatible options
-    if (resolvedModel.toLowerCase().includes('imagen')) {
-      console.error(
-        chalk.red('Error:') + ' Reference images not supported with Imagen models'
-      );
-      process.exit(1);
-    }
-  }
-
-  // Warn about resolution limitations
-  if (resolution !== '1K' && resolvedModel.toLowerCase().includes('flash')) {
-    console.error(
-      chalk.yellow('Warning:') +
-        ` Resolution ${resolution} may not be supported by ${modelArg}. ` +
-        'Use gemini-3-pro-image for high resolution.'
-    );
-  }
-
-  // Read prompt
-  const promptText = readPrompt(prompt);
-  console.log(chalk.blue('Generating image with') + ` ${resolvedModel}...`);
-
-  // Create client
-  const client = getClient();
-
-  // Generate based on model type
-  if (resolvedModel.toLowerCase().includes('imagen')) {
-    await generateWithImagen(client, promptText, resolvedModel, aspect, output);
-  } else {
-    await generateWithGemini(
-      client,
-      promptText,
-      resolvedModel,
-      aspect,
-      resolution,
-      output,
-      ref ? resolve(ref) : undefined
-    );
-  }
 }
