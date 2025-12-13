@@ -31,7 +31,7 @@ When an image file is opened:
 
 - Works with existing `af open <filepath>` command
 - Opens in dashboard tab like other files
-- Same annotation system available (for annotating screenshots)
+- Annotations not supported for images (line-based system doesn't apply; coordinate-based annotations may be added in future spec)
 
 ---
 
