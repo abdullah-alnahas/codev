@@ -1403,7 +1403,7 @@ Projects that are paused or canceled.
   - id: "0055"
     title: "Dashboard File Browser"
     summary: "VSCode-like file browser tab with collapsible tree and expand/collapse all controls"
-    status: committed
+    status: integrated
     priority: medium
     release: null
     files:
@@ -1419,8 +1419,8 @@ Projects that are paused or canceled.
       implementing_at: "2025-12-13T13:05:00-08:00"
       implemented_at: "2025-12-13T14:55:00-08:00"
       committed_at: "2025-12-13T15:00:00-08:00"
-      integrated_at: null
-    notes: "PR #105 merged"
+      integrated_at: "2025-12-13T18:00:00-08:00"
+    notes: "PR #105 merged. Validated and integrated."
 ```
 
 ## Next Available Number
