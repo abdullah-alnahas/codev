@@ -3547,6 +3547,10 @@
           return;
         }
         await refresh();
+        // Auto-select the newly created tab (consistent with createNewShell behavior)
+        if (data.id) {
+          selectTab(`shell-${data.id}`);
+        }
         showToast('Worktree shell created', 'success');
       } catch (err) {
         showToast('Network error: ' + err.message, 'error');

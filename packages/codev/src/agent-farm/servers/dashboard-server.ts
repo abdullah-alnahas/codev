@@ -808,13 +808,28 @@ const server = http.createServer(async (req, res) => {
       }
 
       // Validate branch name if provided (prevent command injection)
-      if (branch && !/^[a-zA-Z0-9_\-\/]+$/.test(branch)) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Invalid branch name. Use only letters, numbers, underscores, hyphens, and slashes.'
-        }));
-        return;
+      // Allow: letters, numbers, underscores, hyphens, slashes, dots
+      // Reject: control chars, spaces, .., @{, trailing/leading slashes
+      if (branch) {
+        const invalidPatterns = [
+          /[\x00-\x1f\x7f]/,     // Control characters
+          /\s/,                   // Whitespace
+          /\.\./,                 // Parent directory traversal
+          /@\{/,                  // Git reflog syntax
+          /^\//,                  // Leading slash
+          /\/$/,                  // Trailing slash
+          /\/\//,                 // Double slash
+          /^-/,                   // Leading hyphen (could be flag)
+        ];
+        const isInvalid = invalidPatterns.some(p => p.test(branch));
+        if (isInvalid) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Invalid branch name. Avoid spaces, control characters, .., @{, and leading/trailing slashes.'
+          }));
+          return;
+        }
       }
 
       const shellState = loadState();
@@ -853,9 +868,28 @@ const server = http.createServer(async (req, res) => {
 
         // Create worktree
         try {
-          const gitCmd = branch
-            ? `git worktree add "${worktreePath}" -b "${branch}"`
-            : `git worktree add "${worktreePath}" --detach`;
+          let gitCmd: string;
+          if (branch) {
+            // Check if branch already exists
+            let branchExists = false;
+            try {
+              execSync(`git rev-parse --verify "${branch}"`, { cwd: projectRoot, stdio: 'pipe' });
+              branchExists = true;
+            } catch {
+              // Branch doesn't exist
+            }
+
+            if (branchExists) {
+              // Checkout existing branch into worktree
+              gitCmd = `git worktree add "${worktreePath}" "${branch}"`;
+            } else {
+              // Create new branch and worktree
+              gitCmd = `git worktree add "${worktreePath}" -b "${branch}"`;
+            }
+          } else {
+            // Detached HEAD worktree
+            gitCmd = `git worktree add "${worktreePath}" --detach`;
+          }
           execSync(gitCmd, { cwd: projectRoot, stdio: 'pipe' });
           cwd = worktreePath;
         } catch (gitError: unknown) {
