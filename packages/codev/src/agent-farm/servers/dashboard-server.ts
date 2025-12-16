@@ -9,9 +9,12 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
-import { spawn, execSync } from 'node:child_process';
+import { spawn, execSync, exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+
+const execAsync = promisify(exec);
 import { Command } from 'commander';
 import type { DashboardState, Annotation, UtilTerminal, Builder } from '../types.js';
 import {
@@ -652,18 +655,31 @@ interface TimeInterval {
 }
 
 /**
+ * Escape a string for safe use in shell commands
+ * Handles special characters that could cause command injection
+ */
+function escapeShellArg(str: string): string {
+  // Single-quote the string and escape any single quotes within it
+  return "'" + str.replace(/'/g, "'\\''") + "'";
+}
+
+/**
  * Get today's git commits from all branches for the current user
  */
-function getGitCommits(projectRoot: string): Commit[] {
+async function getGitCommits(projectRoot: string): Promise<Commit[]> {
   try {
-    const author = execSync('git config user.name', { cwd: projectRoot }).toString().trim();
+    const { stdout: authorRaw } = await execAsync('git config user.name', { cwd: projectRoot });
+    const author = authorRaw.trim();
     if (!author) return [];
 
+    // Escape author name to prevent command injection
+    const safeAuthor = escapeShellArg(author);
+
     // Get commits from all branches since midnight
-    const output = execSync(
-      `git log --all --since="midnight" --author="${author}" --format="%H|%s|%aI|%D"`,
-      { cwd: projectRoot, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
-    ).toString();
+    const { stdout: output } = await execAsync(
+      `git log --all --since="midnight" --author=${safeAuthor} --format="%H|%s|%aI|%D"`,
+      { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }
+    );
 
     if (!output.trim()) return [];
 
@@ -700,15 +716,19 @@ function getGitCommits(projectRoot: string): Commit[] {
 /**
  * Get unique files modified today
  */
-function getModifiedFiles(projectRoot: string): string[] {
+async function getModifiedFiles(projectRoot: string): Promise<string[]> {
   try {
-    const author = execSync('git config user.name', { cwd: projectRoot }).toString().trim();
+    const { stdout: authorRaw } = await execAsync('git config user.name', { cwd: projectRoot });
+    const author = authorRaw.trim();
     if (!author) return [];
 
-    const output = execSync(
-      `git log --all --since="midnight" --author="${author}" --name-only --format=""`,
-      { cwd: projectRoot, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
-    ).toString();
+    // Escape author name to prevent command injection
+    const safeAuthor = escapeShellArg(author);
+
+    const { stdout: output } = await execAsync(
+      `git log --all --since="midnight" --author=${safeAuthor} --name-only --format=""`,
+      { cwd: projectRoot, maxBuffer: 10 * 1024 * 1024 }
+    );
 
     if (!output.trim()) return [];
 
@@ -721,27 +741,56 @@ function getModifiedFiles(projectRoot: string): string[] {
 }
 
 /**
- * Get GitHub PRs created/updated today via gh CLI
+ * Get GitHub PRs created or merged today via gh CLI
+ * Combines PRs created today AND PRs merged today (which may have been created earlier)
  */
-function getGitHubPRs(projectRoot: string): PullRequest[] {
+async function getGitHubPRs(projectRoot: string): Promise<PullRequest[]> {
   try {
     // Use local time for the date (spec says "today" means local machine time)
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const output = execSync(
-      `gh pr list --author "@me" --state all --search "created:>=${today}" --json number,title,state,url`,
-      { cwd: projectRoot, encoding: 'utf-8', timeout: 10000 }
-    ).toString();
 
-    if (!output.trim()) return [];
+    // Fetch PRs created today AND PRs merged today in parallel
+    const [createdResult, mergedResult] = await Promise.allSettled([
+      execAsync(
+        `gh pr list --author "@me" --state all --search "created:>=${today}" --json number,title,state,url`,
+        { cwd: projectRoot, timeout: 15000 }
+      ),
+      execAsync(
+        `gh pr list --author "@me" --state merged --search "merged:>=${today}" --json number,title,state,url`,
+        { cwd: projectRoot, timeout: 15000 }
+      ),
+    ]);
 
-    const prs = JSON.parse(output) as Array<{ number: number; title: string; state: string; url: string }>;
-    return prs.map(pr => ({
-      number: pr.number,
-      title: pr.title.slice(0, 100),
-      state: pr.state,
-      url: pr.url,
-    }));
+    const prsMap = new Map<number, PullRequest>();
+
+    // Process PRs created today
+    if (createdResult.status === 'fulfilled' && createdResult.value.stdout.trim()) {
+      const prs = JSON.parse(createdResult.value.stdout) as Array<{ number: number; title: string; state: string; url: string }>;
+      for (const pr of prs) {
+        prsMap.set(pr.number, {
+          number: pr.number,
+          title: pr.title.slice(0, 100),
+          state: pr.state,
+          url: pr.url,
+        });
+      }
+    }
+
+    // Process PRs merged today (may overlap with created, deduped by Map)
+    if (mergedResult.status === 'fulfilled' && mergedResult.value.stdout.trim()) {
+      const prs = JSON.parse(mergedResult.value.stdout) as Array<{ number: number; title: string; state: string; url: string }>;
+      for (const pr of prs) {
+        prsMap.set(pr.number, {
+          number: pr.number,
+          title: pr.title.slice(0, 100),
+          state: pr.state,
+          url: pr.url,
+        });
+      }
+    }
+
+    return Array.from(prsMap.values());
   } catch (err) {
     // gh CLI might not be available or authenticated
     console.error('Error getting GitHub PRs:', (err as Error).message);
@@ -774,44 +823,76 @@ function getBuilderActivity(): BuilderActivity[] {
 
 /**
  * Detect project status changes in projectlist.md today
+ * Handles YAML format inside Markdown fenced code blocks
  */
-function getProjectChanges(projectRoot: string): ProjectChange[] {
+async function getProjectChanges(projectRoot: string): Promise<ProjectChange[]> {
   try {
     const projectlistPath = path.join(projectRoot, 'codev/projectlist.md');
     if (!fs.existsSync(projectlistPath)) return [];
 
     // Get the first commit hash from today that touched projectlist.md
-    const firstCommitOutput = execSync(
+    const { stdout: firstCommitOutput } = await execAsync(
       `git log --since="midnight" --format=%H -- codev/projectlist.md | tail -1`,
-      { cwd: projectRoot, encoding: 'utf-8' }
-    ).toString().trim();
+      { cwd: projectRoot }
+    );
 
-    if (!firstCommitOutput) return [];
+    if (!firstCommitOutput.trim()) return [];
 
     // Get diff of projectlist.md from that commit's parent to HEAD
-    const diff = execSync(
-      `git diff ${firstCommitOutput}^..HEAD -- codev/projectlist.md 2>/dev/null || echo ""`,
-      { cwd: projectRoot, encoding: 'utf-8', maxBuffer: 1024 * 1024 }
-    ).toString();
+    let diff: string;
+    try {
+      const { stdout } = await execAsync(
+        `git diff ${firstCommitOutput.trim()}^..HEAD -- codev/projectlist.md`,
+        { cwd: projectRoot, maxBuffer: 1024 * 1024 }
+      );
+      diff = stdout;
+    } catch {
+      return [];
+    }
 
     if (!diff.trim()) return [];
 
     // Parse status changes from diff
-    // Looking for patterns like "- status: implemented" or "+ status: committed"
+    // Format is YAML inside Markdown code blocks:
+    //   - id: "0058"
+    //     title: "File Search Autocomplete"
+    //     status: implementing
     const changes: ProjectChange[] = [];
     const lines = diff.split('\n');
-    let currentProject = '';
+    let currentId = '';
+    let currentTitle = '';
     let oldStatus = '';
     let newStatus = '';
 
     for (const line of lines) {
-      // Track current project context
-      const projectMatch = line.match(/^[+-]?\s*##\s*(\d{4})[:-]\s*(.+)/);
-      if (projectMatch) {
-        currentProject = `${projectMatch[1]}: ${projectMatch[2].trim()}`;
+      // Track current project context from YAML id field
+      // Match lines like: "  - id: \"0058\"" or "+  - id: \"0058\""
+      const idMatch = line.match(/^[+-]?\s*-\s*id:\s*["']?(\d{4})["']?/);
+      if (idMatch) {
+        // If we have a pending status change from previous project, emit it
+        if (oldStatus && newStatus && currentId) {
+          changes.push({
+            id: currentId,
+            title: currentTitle,
+            oldStatus,
+            newStatus,
+          });
+          oldStatus = '';
+          newStatus = '';
+        }
+        currentId = idMatch[1];
+        currentTitle = ''; // Will be filled by title line
+      }
+
+      // Track title (comes after id in YAML)
+      // Match lines like: "    title: \"File Search Autocomplete\""
+      const titleMatch = line.match(/^[+-]?\s*title:\s*["']?([^"']+)["']?/);
+      if (titleMatch && currentId) {
+        currentTitle = titleMatch[1].trim();
       }
 
       // Track status changes
+      // Match lines like: "-    status: implementing" or "+    status: implemented"
       const statusMatch = line.match(/^([+-])\s*status:\s*(\w+)/);
       if (statusMatch) {
         const [, modifier, status] = statusMatch;
@@ -819,18 +900,18 @@ function getProjectChanges(projectRoot: string): ProjectChange[] {
           oldStatus = status;
         } else if (modifier === '+') {
           newStatus = status;
-          if (oldStatus && currentProject) {
-            changes.push({
-              id: currentProject.split(':')[0],
-              title: currentProject.split(':').slice(1).join(':').trim(),
-              oldStatus,
-              newStatus,
-            });
-            oldStatus = '';
-            newStatus = '';
-          }
         }
       }
+    }
+
+    // Emit final pending change if exists
+    if (oldStatus && newStatus && currentId) {
+      changes.push({
+        id: currentId,
+        title: currentTitle,
+        oldStatus,
+        newStatus,
+      });
     }
 
     return changes;
@@ -921,6 +1002,26 @@ function calculateTimeTracking(commits: Commit[], builders: BuilderActivity[]): 
 }
 
 /**
+ * Find the consult CLI path
+ * Returns the path to the consult binary, checking multiple locations
+ */
+function findConsultPath(): string {
+  // When running from dist/, check relative paths
+  // dist/agent-farm/servers/ -> ../../../bin/consult.js
+  const distPath = path.join(__dirname, '../../../bin/consult.js');
+  if (fs.existsSync(distPath)) {
+    return distPath;
+  }
+
+  // When running from src/ with tsx, check src-relative paths
+  // src/agent-farm/servers/ -> ../../../bin/consult.js (won't exist, it's .ts in src)
+  // But bin/ is at packages/codev/bin/consult.js, so it should still work
+
+  // Fall back to npx consult (works if @cluesmith/codev is installed)
+  return 'npx consult';
+}
+
+/**
  * Generate AI summary via consult CLI
  */
 async function generateAISummary(data: {
@@ -954,15 +1055,16 @@ Write a brief, professional summary (2-3 sentences) focusing on accomplishments.
 
   try {
     // Use consult CLI to generate summary
-    const consultPath = path.join(__dirname, '../../../../bin/consult');
-    const escapedPrompt = prompt.replace(/'/g, "'\\''");
+    const consultCmd = findConsultPath();
+    const safePrompt = escapeShellArg(prompt);
 
-    const output = execSync(
-      `"${consultPath}" --model gemini general '${escapedPrompt}'`,
-      { encoding: 'utf-8', timeout: 60000, maxBuffer: 1024 * 1024 }
-    ).toString();
+    // Use async exec with timeout
+    const { stdout } = await execAsync(
+      `${consultCmd} --model gemini general ${safePrompt}`,
+      { timeout: 60000, maxBuffer: 1024 * 1024 }
+    );
 
-    return output.trim();
+    return stdout.trim();
   } catch (err) {
     console.error('AI summary generation failed:', (err as Error).message);
     return '';
@@ -973,13 +1075,13 @@ Write a brief, professional summary (2-3 sentences) focusing on accomplishments.
  * Collect all activity data for today
  */
 async function collectActivitySummary(projectRoot: string): Promise<ActivitySummary> {
-  // Collect data from all sources in parallel where possible
+  // Collect data from all sources in parallel - these are now truly async
   const [commits, files, prs, builders, projectChanges] = await Promise.all([
-    Promise.resolve(getGitCommits(projectRoot)),
-    Promise.resolve(getModifiedFiles(projectRoot)),
-    Promise.resolve(getGitHubPRs(projectRoot)),
-    Promise.resolve(getBuilderActivity()),
-    Promise.resolve(getProjectChanges(projectRoot)),
+    getGitCommits(projectRoot),
+    getModifiedFiles(projectRoot),
+    getGitHubPRs(projectRoot),
+    Promise.resolve(getBuilderActivity()), // This one is sync (reads from state)
+    getProjectChanges(projectRoot),
   ]);
 
   const timeTracking = calculateTimeTracking(commits, builders);
