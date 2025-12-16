@@ -135,7 +135,7 @@ Projects currently in development (conceived through committed), sorted by prior
   - id: "0058"
     title: "File Search Autocomplete"
     summary: "VSCode-like Cmd+P quick file finder with substring matching and autocomplete"
-    status: committed
+    status: integrated
     priority: medium
     release: null
     files:
@@ -151,13 +151,13 @@ Projects currently in development (conceived through committed), sorted by prior
       implementing_at: "2025-12-15T17:00:00-08:00"
       implemented_at: "2025-12-15T18:00:00-08:00"
       committed_at: "2025-12-15T18:30:00-08:00"
-      integrated_at: null
+      integrated_at: "2025-12-16T00:00:00-08:00"
     notes: "Quick file finder (Cmd+P + Files tab). PR #110 merged 2025-12-15."
 
   - id: "0059"
     title: "Daily Activity Summary"
     summary: "Clock button in dashboard that uses AI to summarize today's work and time spent"
-    status: committed
+    status: integrated
     priority: medium
     release: null
     files:
@@ -173,7 +173,7 @@ Projects currently in development (conceived through committed), sorted by prior
       implementing_at: "2025-12-15T18:30:00-08:00"
       implemented_at: "2025-12-15T20:00:00-08:00"
       committed_at: "2025-12-15T20:15:00-08:00"
-      integrated_at: null
+      integrated_at: "2025-12-16T00:00:00-08:00"
     notes: "What did I do today? button with AI summary. PR #111 merged 2025-12-15."
 
   - id: "0039"

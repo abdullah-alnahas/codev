@@ -780,6 +780,27 @@
       border-top: 1px solid var(--border);
     }
 
+    /* Activity Tab Styles (Spec 0059) */
+    .activity-tab-container {
+      padding: 24px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .activity-tab-container .activity-summary {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .activity-tab-container .activity-actions {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+    }
+
     /* Projects Tab Styles (Spec 0045) */
     .projects-container {
       flex: 1;
@@ -2115,6 +2136,8 @@
     // Build tabs from initial state
     function buildTabsFromState() {
       const previousTabIds = new Set(tabs.map(t => t.id));
+      // Preserve client-side-only tabs (like activity)
+      const clientSideTabs = tabs.filter(t => t.type === 'activity');
       tabs = [];
 
       // Dashboard tab is ALWAYS first and uncloseable (Spec 0045, 0057)
@@ -2158,6 +2181,11 @@
           port: util.port,
           utilId: util.id
         });
+      }
+
+      // Re-add preserved client-side tabs
+      for (const tab of clientSideTabs) {
+        tabs.push(tab);
       }
 
       // Detect new tabs and auto-switch to them (skip projects tab)
@@ -2361,6 +2389,16 @@
           currentTabType = 'dashboard';
           currentTabPort = null;
           renderDashboardTab();
+        }
+        return;
+      }
+
+      // Handle activity tab specially (no iframe, inline content)
+      if (tab.type === 'activity') {
+        if (currentTabType !== 'activity') {
+          currentTabType = 'activity';
+          currentTabPort = null;
+          renderActivityTab();
         }
         return;
       }
@@ -4438,15 +4476,37 @@
 
     // Show activity summary modal
     async function showActivitySummary() {
-      const modal = document.getElementById('activity-modal');
-      const content = document.getElementById('activity-content');
+      // Check if activity tab already exists
+      let activityTab = tabs.find(t => t.type === 'activity');
 
-      // Show modal with loading state
-      modal.classList.remove('hidden');
+      if (!activityTab) {
+        // Create new activity tab
+        activityTab = {
+          id: 'activity-today',
+          type: 'activity',
+          name: 'Today'
+        };
+        tabs.push(activityTab);
+      }
+
+      // Switch to activity tab
+      activeTabId = activityTab.id;
+      currentTabType = null; // Force re-render
+      renderTabs();
+      renderTabContent();
+    }
+
+    // Render the activity tab content
+    async function renderActivityTab() {
+      const content = document.getElementById('tab-content');
+
+      // Show loading state
       content.innerHTML = `
-        <div class="activity-loading">
-          <span class="activity-spinner"></span>
-          Loading activity...
+        <div class="activity-tab-container">
+          <div class="activity-loading">
+            <span class="activity-spinner"></span>
+            Loading activity...
+          </div>
         </div>
       `;
 
@@ -4456,14 +4516,97 @@
           throw new Error(await response.text());
         }
         activityData = await response.json();
-        renderActivitySummary(activityData);
+        renderActivityTabContent(activityData);
       } catch (err) {
         content.innerHTML = `
-          <div class="activity-error">
-            Failed to load activity: ${escapeHtml(err.message)}
+          <div class="activity-tab-container">
+            <div class="activity-error">
+              Failed to load activity: ${escapeHtml(err.message)}
+            </div>
           </div>
         `;
       }
+    }
+
+    // Render activity tab content (similar to modal but in tab)
+    function renderActivityTabContent(data) {
+      const content = document.getElementById('tab-content');
+
+      // Check for zero activity
+      if (data.commits.length === 0 && data.prs.length === 0 && data.builders.length === 0) {
+        content.innerHTML = `
+          <div class="activity-tab-container">
+            <div class="activity-empty">
+              <p>No activity recorded today</p>
+              <p style="font-size: 12px; margin-top: 8px;">Make some commits or create PRs to see your daily summary!</p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const hours = Math.floor(data.timeTracking.activeMinutes / 60);
+      const mins = data.timeTracking.activeMinutes % 60;
+      const uniqueBranches = new Set(data.commits.map(c => c.branch)).size;
+      const mergedPrs = data.prs.filter(p => p.state === 'MERGED').length;
+
+      // Format time strings
+      const formatTime = (isoString) => {
+        if (!isoString) return '--';
+        const date = new Date(isoString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      };
+
+      let html = '<div class="activity-tab-container"><div class="activity-summary">';
+
+      // AI Summary (if available)
+      if (data.aiSummary) {
+        html += `<div class="activity-ai-summary">${escapeHtml(data.aiSummary)}</div>`;
+      }
+
+      // Activity section
+      html += `
+        <div class="activity-section">
+          <h4>Activity</h4>
+          <ul>
+            <li>${data.commits.length} commits across ${uniqueBranches} branch${uniqueBranches !== 1 ? 'es' : ''}</li>
+            <li>${data.files.length} files modified</li>
+            <li>${data.prs.length} PR${data.prs.length !== 1 ? 's' : ''} created${mergedPrs > 0 ? `, ${mergedPrs} merged` : ''}</li>
+          </ul>
+        </div>
+      `;
+
+      // Projects section (if any status changes)
+      if (data.projectChanges && data.projectChanges.length > 0) {
+        html += `
+          <div class="activity-section">
+            <h4>Projects Touched</h4>
+            <ul>
+              ${data.projectChanges.map(p => `<li>${escapeHtml(p.id)}: ${escapeHtml(p.title)} (${escapeHtml(p.oldStatus)} → ${escapeHtml(p.newStatus)})</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      }
+
+      // Time section
+      html += `
+        <div class="activity-section">
+          <h4>Time</h4>
+          <p><span class="activity-time-value">~${hours}h ${mins}m</span> active time</p>
+          <p>First activity: ${formatTime(data.timeTracking.firstActivity)}</p>
+          <p>Last activity: ${formatTime(data.timeTracking.lastActivity)}</p>
+        </div>
+      `;
+
+      // Copy button
+      html += `
+        <div class="activity-actions">
+          <button class="btn" onclick="copyActivityToClipboard()">Copy to Clipboard</button>
+        </div>
+      `;
+
+      html += '</div></div>';
+      content.innerHTML = html;
     }
 
     // Render activity summary content
