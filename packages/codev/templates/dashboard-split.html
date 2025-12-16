@@ -2206,10 +2206,13 @@
       }
     }
 
-    // Get filename from path
+    // Get filename from path (includes parent dir for context)
     function getFileName(path) {
-      const parts = path.split('/');
-      return parts[parts.length - 1];
+      const parts = path.split('/').filter(p => p);
+      if (parts.length >= 2) {
+        return parts.slice(-2).join('/');
+      }
+      return parts[parts.length - 1] || path;
     }
 
     // Track current architect port to avoid re-rendering iframe unnecessarily
