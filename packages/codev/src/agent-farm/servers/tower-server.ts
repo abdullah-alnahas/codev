@@ -499,6 +499,83 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // API: Create new project
+    if (req.method === 'POST' && url.pathname === '/api/create') {
+      const body = await parseJsonBody(req);
+      const parentPath = body.parent as string;
+      const projectName = body.name as string;
+
+      if (!parentPath || !projectName) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Missing parent or name' }));
+        return;
+      }
+
+      // Validate project name
+      if (!/^[a-zA-Z0-9_-]+$/.test(projectName)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Invalid project name' }));
+        return;
+      }
+
+      // Expand ~ to home directory
+      let expandedParent = parentPath;
+      if (expandedParent.startsWith('~')) {
+        expandedParent = expandedParent.replace('~', homedir());
+      }
+
+      // Validate parent exists
+      if (!fs.existsSync(expandedParent)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: `Parent directory does not exist: ${parentPath}` }));
+        return;
+      }
+
+      const projectPath = path.join(expandedParent, projectName);
+
+      // Check if project already exists
+      if (fs.existsSync(projectPath)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: `Directory already exists: ${projectPath}` }));
+        return;
+      }
+
+      try {
+        // Create directory
+        fs.mkdirSync(projectPath, { recursive: true });
+
+        // Run codev init
+        execSync('npx codev init --yes', {
+          cwd: projectPath,
+          stdio: 'pipe',
+          timeout: 60000,
+        });
+
+        // Launch the instance
+        const launchResult = await launchInstance(projectPath);
+        if (!launchResult.success) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: launchResult.error }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, projectPath }));
+      } catch (err) {
+        // Clean up on failure
+        try {
+          if (fs.existsSync(projectPath)) {
+            fs.rmSync(projectPath, { recursive: true });
+          }
+        } catch {
+          // Ignore cleanup errors
+        }
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: `Failed to create project: ${(err as Error).message}` }));
+      }
+      return;
+    }
+
     // API: Launch new instance
     if (req.method === 'POST' && url.pathname === '/api/launch') {
       const body = await parseJsonBody(req);
