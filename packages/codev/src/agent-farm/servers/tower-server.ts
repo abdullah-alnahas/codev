@@ -526,12 +526,9 @@ const server = http.createServer(async (req, res) => {
       }
 
       try {
-        // Create directory
-        fs.mkdirSync(projectPath, { recursive: true });
-
-        // Run codev init
-        execSync('npx codev init --yes', {
-          cwd: projectPath,
+        // Run codev init (it creates the directory)
+        execSync(`codev init --yes "${projectName}"`, {
+          cwd: expandedParent,
           stdio: 'pipe',
           timeout: 60000,
         });
