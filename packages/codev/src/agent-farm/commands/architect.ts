@@ -5,7 +5,7 @@
  * requiring the full dashboard. Uses tmux for session persistence.
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { getConfig, ensureDirectories } from '../utils/index.js';
@@ -126,9 +126,12 @@ export interface ArchitectOptions {
 export async function architect(options: ArchitectOptions = {}): Promise<void> {
   const args = options.args ?? [];
 
-  // Check tmux is available
+  // Check dependencies
   if (!(await commandExists('tmux'))) {
     fatal('tmux not found. Install with: brew install tmux');
+  }
+  if (!(await commandExists('claude'))) {
+    fatal('claude not found. Install with: npm install -g @anthropic-ai/claude-code');
   }
 
   // Check if session already exists
