@@ -75,19 +75,38 @@ af start --remote user@remote-host --port 4300
 ```
 
 This single command:
-1. SSHs into the remote machine
-2. Starts Agent Farm there
-3. Sets up SSH tunnel back to your local machine
-4. Opens `http://localhost:4200` in your browser
+1. Checks passwordless SSH is configured
+2. Verifies CLI versions match between local and remote
+3. SSHs into the remote machine
+4. Starts Agent Farm there with matching port
+5. Sets up SSH tunnel back to your local machine
+6. Opens the dashboard in your browser
 
 The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
 
-**Limitation**: File annotation tabs (`af open`) use separate ports and won't work through the tunnel. Use terminals for file viewing, or forward additional ports manually.
+**Port Selection:**
+
+The port is determined by the global port registry (`af ports list`). Each project gets a consistent 100-port block (e.g., 4200-4299, 4600-4699). The same port is used on both local and remote ends for the SSH tunnel.
+
+```bash
+# Check your project's port allocation
+af ports list
+```
 
 **Prerequisites:**
 - SSH server must be running on the remote machine
 - Agent Farm (`af`) must be installed on the remote machine
-- SSH keys configured for passwordless access (recommended)
+- **Passwordless SSH required** - set up with `ssh-copy-id user@host`
+- Same version of codev on both machines (warnings shown if mismatched)
+
+**Troubleshooting:**
+
+If the remote can't find `claude` or other commands, ensure they're in your PATH for non-interactive shells. Add to `~/.profile` on the remote:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+**Limitation**: File annotation tabs (`af open`) use separate ports and won't work through the tunnel. Use terminals for file viewing, or forward additional ports manually.
 
 **Legacy mode** (deprecated):
 
