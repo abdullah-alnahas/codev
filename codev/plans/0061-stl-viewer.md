@@ -113,3 +113,95 @@ If issues arise:
 Note: Using Three.js r128 for global builds compatibility (r129+ dropped non-module builds).
 
 **Review**: See `reviews/0061-stl-viewer-tick-001.md`
+
+### TICK-002: 3MF Format Support with Multi-Color (2025-12-27)
+
+**Overview**: Extend the 3D viewer to support 3MF files with native multi-color rendering.
+
+**Implementation Steps**:
+
+#### Step 1: Generalize Viewer to 3D Viewer
+
+Rename and refactor `stl-viewer.html` → `3d-viewer.html` to handle multiple formats:
+- Accept format type via template variable `{{FORMAT}}`
+- Load appropriate loader based on format
+
+#### Step 2: Add 3MFLoader
+
+Add 3MFLoader from Three.js:
+```html
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/3MFLoader.js"></script>
+```
+
+Note: 3MFLoader requires fflate for ZIP decompression (included in Three.js examples).
+
+Alternative: Use ES modules if r128 3MFLoader has issues:
+```html
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+  import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
+</script>
+```
+
+#### Step 3: Update open-server.ts
+
+1. Add 3MF detection alongside STL:
+```typescript
+const is3MF = ext === '3mf';
+const is3D = isSTL || is3MF;
+```
+
+2. Serve 3D viewer for both formats with format parameter
+3. Add `/api/3mf` endpoint for raw 3MF file serving
+
+#### Step 4: Multi-Color Rendering
+
+3MFLoader returns a `Group` containing meshes with:
+- `mesh.material.vertexColors` for per-vertex colors
+- `mesh.material.color` for per-object colors
+- Proper material assignments from 3MF file
+
+Ensure scene rendering preserves these colors:
+```javascript
+loader.load('/api/3mf', (group) => {
+  // Group contains meshes with materials already assigned
+  // No need to override materials
+  scene.add(group);
+});
+```
+
+#### Step 5: Handle Multi-Object Files
+
+3MF files can contain multiple objects. The Group structure preserves this:
+- Each object becomes a child mesh in the group
+- Center and fit based on entire group bounding box
+- All objects visible by default
+
+**Files to Modify**:
+
+| File | Action | Description |
+|------|--------|-------------|
+| `packages/codev/templates/stl-viewer.html` | Rename/Modify | Generalize to `3d-viewer.html` |
+| `packages/codev/src/agent-farm/servers/open-server.ts` | Modify | Add 3MF detection and API endpoint |
+
+**Testing**:
+
+1. Single-color 3MF file - renders with correct color
+2. Multi-color 3MF file (Bambu Studio export) - each part has correct color
+3. Multi-object 3MF file - all objects visible
+4. Large 3MF file (>10MB) - loads without crash
+5. Invalid 3MF file - shows error message
+6. Verify STL files still work after refactor
+
+**Dependencies**:
+- Three.js 3MFLoader (included in Three.js examples)
+- fflate (ZIP library, dependency of 3MFLoader)
+
+**Review**: See `reviews/0061-stl-viewer-tick-002.md`

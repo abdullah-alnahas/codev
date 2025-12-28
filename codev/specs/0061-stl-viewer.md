@@ -111,3 +111,44 @@ The initial implementation uses OrbitControls with Euler angles for rotation, wh
 - Alternative: Implement custom quaternion rotation if TrackballControls has issues
 
 **Review**: See `reviews/0061-stl-viewer-tick-001.md`
+
+### TICK-002: 3MF Format Support with Multi-Color (2025-12-27)
+
+**Summary**: Add native 3MF file viewing with proper multi-color/multi-material support
+
+**Problem Addressed**:
+Modern 3D printing workflows (PrusaSlicer, Bambu Studio, OrcaSlicer) use 3MF as the standard format. 3MF supports:
+- Multiple objects in one file
+- Per-object and per-triangle colors (Color Groups)
+- Materials and textures
+- Better metadata than STL
+
+Currently users must convert 3MF to STL to view, losing color information.
+
+**Spec Changes**:
+
+1. **Goals - Must Have** additions:
+   - 3MF file detection: `af open model.3mf` recognizes 3MF files
+   - Multi-color rendering: Display objects/triangles with their assigned colors
+   - Multi-object support: Show all objects in a 3MF file
+
+2. **Technical Approach**:
+   - Use Three.js 3MFLoader (supports Color Groups, materials, textures)
+   - 3MFLoader handles ZIP extraction and XML parsing internally
+   - Returns a Group object containing meshes with vertex colors/materials
+
+3. **Out of Scope** update:
+   - Remove "3MF" from out-of-scope list
+   - Keep: OBJ, GLTF (future), editing, animation, assemblies
+
+**Acceptance Criteria**:
+1. `af open path/to/model.3mf` opens 3MF viewer in dashboard
+2. Single-color 3MF files render with their assigned color
+3. Multi-color 3MF files render with correct per-object/per-triangle colors
+4. Multi-object 3MF files show all objects
+5. Same controls as STL viewer (rotate, zoom, pan, reset)
+
+**Plan Changes**:
+- See TICK-002 section in plan
+
+**Review**: See `reviews/0061-stl-viewer-tick-002.md`
