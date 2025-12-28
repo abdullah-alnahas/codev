@@ -143,15 +143,15 @@ Projects currently in development (conceived through committed), sorted by prior
 # Medium Priority
 
   - id: "0061"
-    title: "STL Viewer Support"
-    summary: "Add 3D STL file viewing to dashboard annotation viewer for OpenSCAD and CAD tool output"
-    status: implemented
+    title: "3D Model Viewer (STL + 3MF)"
+    summary: "Add 3D model viewing to dashboard for STL and 3MF files with multi-color support"
+    status: committed
     priority: medium
     release: null
     files:
       spec: codev/specs/0061-stl-viewer.md
       plan: codev/plans/0061-stl-viewer.md
-      review: null
+      review: codev/reviews/0061-stl-viewer-tick-002.md
     dependencies: []
     tags: [dashboard, ui, 3d, cad]
     timestamps:
@@ -160,9 +160,9 @@ Projects currently in development (conceived through committed), sorted by prior
       planned_at: "2025-12-25T00:00:00-08:00"
       implementing_at: "2025-12-25T00:00:00-08:00"
       implemented_at: "2025-12-26T00:00:00-08:00"
-      committed_at: null
+      committed_at: "2025-12-28T00:00:00-08:00"
       integrated_at: null
-    notes: "Three.js STL viewer with standard views, wireframe, axes, grid toggles. Uses r128 for global builds. TICK-001: quaternion trackball (merged). TICK-002: 3MF multi-color support (in progress)."
+    notes: "Three.js 3D viewer (STL + 3MF). Uses ES Modules with Three.js r160. TICK-001: quaternion trackball. TICK-002: 3MF multi-color support. Both merged."
 
   - id: "0023"
     title: "Consult Tool (Stateful)"
