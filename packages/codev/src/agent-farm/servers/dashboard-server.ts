@@ -2008,8 +2008,9 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // Rewrite the URL to strip the /annotation/:id prefix
-      req.url = annotationMatch[2] || '/';
+      // Rewrite the URL to strip the /annotation/:id prefix, preserving query string
+      const remainingPath = annotationMatch[2] || '/';
+      req.url = url.search ? `${remainingPath}${url.search}` : remainingPath;
       terminalProxy.web(req, res, { target: `http://localhost:${annotation.port}` });
       return;
     }
