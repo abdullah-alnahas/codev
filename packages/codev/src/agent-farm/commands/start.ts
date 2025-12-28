@@ -398,13 +398,14 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   }
 
   // Find available port for architect terminal
+  // Architect terminal runs on dashboard port + 1 to avoid conflicts
   let architectPort = config.architectPort;
   if (options.port !== undefined) {
     const parsedPort = Number(options.port);
     if (!Number.isFinite(parsedPort) || parsedPort < 1024 || parsedPort > 65535) {
       fatal(`Invalid port: ${options.port}. Must be a number between 1024-65535`);
     }
-    architectPort = parsedPort;
+    architectPort = parsedPort + 1; // Offset from dashboard port
   }
 
   logger.header('Starting Agent Farm');
