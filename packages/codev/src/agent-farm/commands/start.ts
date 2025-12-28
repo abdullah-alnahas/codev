@@ -7,6 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn, type ChildProcess } from 'node:child_process';
 import * as net from 'node:net';
 import type { StartOptions, ArchitectState } from '../types.js';
+import { version as localVersion } from '../../version.js';
 import { getConfig, ensureDirectories } from '../utils/index.js';
 import { logger, fatal } from '../utils/logger.js';
 import { spawnDetached, commandExists, findAvailablePort, openBrowser, run, spawnTtyd } from '../utils/shell.js';
@@ -74,6 +75,83 @@ function loadRolePrompt(config: { codevDir: string; bundledRolesDir: string }, r
 }
 
 /**
+ * Check remote CLI versions and warn about mismatches
+ */
+async function checkRemoteVersions(user: string, host: string): Promise<void> {
+  const commands = ['codev', 'af', 'consult', 'generate-image'];
+  const versionCmd = commands.map(cmd => `${cmd} --version 2>/dev/null || echo "${cmd}: not found"`).join(' && echo "---" && ');
+
+  return new Promise((resolve) => {
+    const ssh = spawn('ssh', [
+      '-o', 'ConnectTimeout=5',
+      '-o', 'BatchMode=yes',
+      `${user}@${host}`,
+      versionCmd,
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    ssh.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    ssh.on('error', () => {
+      // SSH failed, skip version check
+      resolve();
+    });
+
+    ssh.on('exit', (code) => {
+      if (code !== 0) {
+        // SSH failed or commands failed, skip version check
+        resolve();
+        return;
+      }
+
+      // Parse output: each command's version separated by "---"
+      const outputs = stdout.split('---').map(s => s.trim());
+      const mismatches: string[] = [];
+
+      for (let i = 0; i < commands.length && i < outputs.length; i++) {
+        const output = outputs[i];
+        const cmd = commands[i];
+
+        if (output.includes('not found')) {
+          mismatches.push(`${cmd}: not installed on remote`);
+        } else {
+          // Extract version number (e.g., "1.5.3" from "@cluesmith/codev@1.5.3" or "1.5.3")
+          const versionMatch = output.match(/(\d+\.\d+\.\d+)/);
+          if (versionMatch) {
+            const remoteVer = versionMatch[1];
+            if (remoteVer !== localVersion) {
+              mismatches.push(`${cmd}: local ${localVersion}, remote ${remoteVer}`);
+            }
+          }
+        }
+      }
+
+      if (mismatches.length > 0) {
+        logger.blank();
+        logger.warn('Version mismatch detected:');
+        for (const m of mismatches) {
+          logger.warn(`  ${m}`);
+        }
+        logger.info('Consider updating: npm install -g @cluesmith/codev');
+        logger.blank();
+      }
+
+      resolve();
+    });
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      ssh.kill();
+      resolve();
+    }, 10000);
+  });
+}
+
+/**
  * Start Agent Farm on a remote machine via SSH
  */
 async function startRemote(options: StartOptions): Promise<void> {
@@ -100,6 +178,10 @@ async function startRemote(options: StartOptions): Promise<void> {
   if (!portAvailable) {
     fatal(`Port ${localPort} is already in use locally. Stop the existing service or use --port to specify a different port.`);
   }
+
+  // Check remote CLI versions (non-blocking warning)
+  logger.info('Checking remote versions...');
+  await checkRemoteVersions(user, host);
 
   logger.info('Connecting via SSH...');
 
