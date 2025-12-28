@@ -30,7 +30,9 @@ af start [options]
 - `-c, --cmd <command>` - Command to run in architect terminal
 - `-p, --port <port>` - Port for architect terminal
 - `--no-role` - Skip loading architect role prompt
-- `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (see below)
+- `--no-browser` - Skip opening browser after start
+- `-r, --remote <target>` - Start Agent Farm on remote machine (see below)
+- `--allow-insecure-remote` - Bind to 0.0.0.0 for remote access (deprecated)
 
 **Description:**
 
@@ -53,58 +55,48 @@ af start -p 4300
 # Start with specific command
 af start -c "claude --model opus"
 
-# Start with remote access enabled
-af start --allow-insecure-remote
+# Start on remote machine
+af start --remote user@host
 ```
 
 #### Remote Access
 
-By default, Agent Farm binds to `localhost` (127.0.0.1), making it accessible only from the local machine. To access the dashboard from another device (e.g., a tablet, phone, or another computer on your network):
+Start Agent Farm on a remote machine and access it from your local workstation with a single command:
 
 ```bash
+# On your local machine - one command does everything:
+af start --remote user@remote-host
+
+# Or with explicit project path:
+af start --remote user@remote-host:/path/to/project
+
+# With custom port:
+af start --remote user@remote-host --port 4300
+```
+
+This single command:
+1. SSHs into the remote machine
+2. Starts Agent Farm there
+3. Sets up SSH tunnel back to your local machine
+4. Opens `http://localhost:4200` in your browser
+
+The dashboard and all terminals work identically to local development. Press Ctrl+C to disconnect.
+
+**Limitation**: File annotation tabs (`af open`) use separate ports and won't work through the tunnel. Use terminals for file viewing, or forward additional ports manually.
+
+**Prerequisites:**
+- SSH server must be running on the remote machine
+- Agent Farm (`af`) must be installed on the remote machine
+- SSH keys configured for passwordless access (recommended)
+
+**Legacy mode** (deprecated):
+
+```bash
+# DEPRECATED: Exposes dashboard without authentication
 af start --allow-insecure-remote
 ```
 
-This binds the server to `0.0.0.0`, making it accessible from any network interface.
-
-**Finding your machine's IP:**
-```bash
-# macOS
-ipconfig getifaddr en0    # WiFi
-ipconfig getifaddr en1    # Ethernet
-
-# Linux
-hostname -I | awk '{print $1}'
-```
-
-**Accessing remotely:**
-```
-http://<your-ip>:4200
-```
-
-**⚠️ Security Warning:**
-
-The `--allow-insecure-remote` flag provides **no authentication**. Anyone on your network can:
-- View and interact with all terminals
-- Execute commands as your user
-- Access and modify your code
-
-**Only use this on trusted networks** (home WiFi, isolated development networks). Never use on:
-- Public WiFi (coffee shops, airports)
-- Shared office networks without VPN
-- Any network with untrusted users
-
-**For secure remote access**, consider:
-1. **SSH tunneling** (recommended):
-   ```bash
-   # On remote machine, tunnel to your dev machine
-   ssh -L 4200:localhost:4200 user@your-dev-machine
-   # Then open http://localhost:4200 on the remote machine
-   ```
-
-2. **VPN** - Access your home/office network securely
-
-3. **Tailscale/ZeroTier** - Mesh VPN for secure device-to-device connections
+The `--allow-insecure-remote` flag binds to `0.0.0.0` with no authentication. Use `--remote` instead for secure access via SSH.
 
 ---
 

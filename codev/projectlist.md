@@ -166,25 +166,25 @@ Projects currently in development (conceived through committed), sorted by prior
 
   - id: "0062"
     title: "Secure Remote Access"
-    summary: "Access Agent Farm from remote devices via af start --remote user@host"
-    status: implementing
-    priority: medium
+    summary: "SSH tunnel + reverse proxy: af start --remote for one-command remote access"
+    status: committed
+    priority: high
     release: null
     files:
       spec: codev/specs/0062-secure-remote-access.md
-      plan: null
-      review: null
+      plan: codev/plans/0062-secure-remote-access.md
+      review: codev/reviews/0062-secure-remote-access.md
     dependencies: []
-    tags: [agent-farm, remote, ssh]
+    tags: [security, remote-access, ssh, agent-farm]
     timestamps:
-      conceived_at: "2025-12-23T00:00:00-08:00"
-      specified_at: "2025-12-28T00:00:00-08:00"
-      planned_at: null
-      implementing_at: "2025-12-28T00:00:00-08:00"
-      implemented_at: null
-      committed_at: null
+      conceived_at: "2025-12-27T00:00:00-08:00"
+      specified_at: "2025-12-27T00:00:00-08:00"
+      planned_at: "2025-12-27T00:00:00-08:00"
+      implementing_at: "2025-12-27T00:00:00-08:00"
+      implemented_at: "2025-12-28T00:00:00-08:00"
+      committed_at: "2025-12-28T00:00:00-08:00"
       integrated_at: null
-    notes: "Reworking PR 120 to use af start --remote instead of af tunnel. Proxy infrastructure done, needs --remote flag."
+    notes: "Reverse proxy consolidates ttyd instances behind one port. af start --remote for one-command iPad/remote access."
 
   - id: "0023"
     title: "Consult Tool (Stateful)"

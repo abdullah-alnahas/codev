@@ -9,6 +9,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
+import httpProxy from 'http-proxy';
 import { spawn, execSync, exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
@@ -17,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 const execAsync = promisify(exec);
 import { Command } from 'commander';
 import type { DashboardState, Annotation, UtilTerminal, Builder } from '../types.js';
+import { getPortForTerminal } from '../utils/terminal-ports.js';
 import {
   loadState,
   getAnnotations,
@@ -1119,6 +1121,24 @@ async function collectActivitySummary(projectRoot: string): Promise<ActivitySumm
 // Insecure remote mode - set when bindHost is 0.0.0.0
 const insecureRemoteMode = bindHost === '0.0.0.0';
 
+// ============================================================
+// Terminal Proxy (Spec 0062 - Secure Remote Access)
+// ============================================================
+
+// Create http-proxy instance for terminal proxying
+const terminalProxy = httpProxy.createProxyServer({ ws: true });
+
+// Handle proxy errors gracefully
+terminalProxy.on('error', (err, req, res) => {
+  console.error('Terminal proxy error:', err.message);
+  if (res && 'writeHead' in res && !res.headersSent) {
+    (res as http.ServerResponse).writeHead(502, { 'Content-Type': 'application/json' });
+    (res as http.ServerResponse).end(JSON.stringify({ error: 'Terminal unavailable' }));
+  }
+});
+
+// getPortForTerminal is imported from utils/terminal-ports.ts (Spec 0062)
+
 // Security: Validate request origin
 function isRequestAllowed(req: http.IncomingMessage): boolean {
   // Skip all security checks in insecure remote mode
@@ -1955,6 +1975,25 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Terminal proxy route (Spec 0062 - Secure Remote Access)
+    // Routes /terminal/:id to the appropriate ttyd instance
+    const terminalMatch = url.pathname.match(/^\/terminal\/([^/]+)(\/.*)?$/);
+    if (terminalMatch) {
+      const terminalId = terminalMatch[1];
+      const terminalPort = getPortForTerminal(terminalId, loadState());
+
+      if (!terminalPort) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Terminal not found: ${terminalId}` }));
+        return;
+      }
+
+      // Rewrite the URL to strip the /terminal/:id prefix
+      req.url = terminalMatch[2] || '/';
+      terminalProxy.web(req, res, { target: `http://localhost:${terminalPort}` });
+      return;
+    }
+
     // Serve dashboard
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
       try {
@@ -1988,6 +2027,43 @@ const server = http.createServer(async (req, res) => {
     console.error('Request error:', err);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Internal server error: ' + (err as Error).message);
+  }
+});
+
+// WebSocket upgrade handler for terminal proxy (Spec 0062)
+// ttyd uses WebSocket for bidirectional terminal communication
+server.on('upgrade', (req, socket, head) => {
+  // Security check
+  const host = req.headers.host;
+  if (!insecureRemoteMode && host && !host.startsWith('localhost') && !host.startsWith('127.0.0.1')) {
+    socket.destroy();
+    return;
+  }
+
+  const reqUrl = new URL(req.url || '/', `http://localhost:${port}`);
+  const terminalMatch = reqUrl.pathname.match(/^\/terminal\/([^/]+)(\/.*)?$/);
+
+  if (terminalMatch) {
+    const terminalId = terminalMatch[1];
+    const terminalPort = getPortForTerminal(terminalId, loadState());
+
+    if (terminalPort) {
+      // Rewrite URL to strip /terminal/:id prefix
+      req.url = terminalMatch[2] || '/';
+      terminalProxy.ws(req, socket, head, { target: `http://localhost:${terminalPort}` });
+    } else {
+      // Terminal not found - close the socket
+      socket.destroy();
+    }
+  }
+  // Non-terminal WebSocket requests are ignored (socket will time out)
+});
+
+// Handle WebSocket proxy errors separately
+terminalProxy.on('error', (err, req, socket) => {
+  console.error('WebSocket proxy error:', err.message);
+  if (socket && 'destroy' in socket && typeof socket.destroy === 'function' && !socket.destroyed) {
+    (socket as net.Socket).destroy();
   }
 });
 

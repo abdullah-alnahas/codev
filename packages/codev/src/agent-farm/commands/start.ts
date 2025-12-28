@@ -2,8 +2,9 @@
  * Start command - launches the architect dashboard
  */
 
-import { resolve } from 'node:path';
+import { resolve, basename } from 'node:path';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawn, type ChildProcess } from 'node:child_process';
 import type { StartOptions, ArchitectState } from '../types.js';
 import { getConfig, ensureDirectories } from '../utils/index.js';
 import { logger, fatal } from '../utils/logger.js';
@@ -11,6 +12,27 @@ import { spawnDetached, commandExists, findAvailablePort, openBrowser, run, spaw
 import { checkCoreDependencies } from '../utils/deps.js';
 import { loadState, setArchitect } from '../state.js';
 import { handleOrphanedSessions, warnAboutStaleArtifacts } from '../utils/orphan-handler.js';
+
+/**
+ * Parsed remote target
+ */
+interface ParsedRemote {
+  user: string;
+  host: string;
+  remotePath?: string;
+}
+
+/**
+ * Parse remote target string: user@host or user@host:/path
+ */
+export function parseRemote(remote: string): ParsedRemote {
+  // Match: user@host or user@host:/path
+  const match = remote.match(/^([^@]+)@([^:]+)(?::(.+))?$/);
+  if (!match) {
+    throw new Error(`Invalid remote format: ${remote}. Use user@host or user@host:/path`);
+  }
+  return { user: match[1], host: match[2], remotePath: match[3] };
+}
 
 /**
  * Find and load a role file - tries local codev/roles/ first, falls back to bundled
@@ -32,9 +54,142 @@ function loadRolePrompt(config: { codevDir: string; bundledRolesDir: string }, r
 }
 
 /**
+ * Start Agent Farm on a remote machine via SSH
+ */
+async function startRemote(options: StartOptions): Promise<void> {
+  const config = getConfig();
+  const { user, host, remotePath } = parseRemote(options.remote!);
+  const localPort = options.port || config.dashboardPort;
+
+  logger.header('Starting Remote Agent Farm');
+  logger.kv('Host', `${user}@${host}`);
+  if (remotePath) logger.kv('Path', remotePath);
+  logger.kv('Local Port', localPort);
+
+  // Build the remote command
+  // If no path specified, use the current directory name to find project on remote
+  const projectName = basename(config.projectRoot);
+  const cdCommand = remotePath
+    ? `cd ${remotePath}`
+    : `cd ${projectName} 2>/dev/null || cd ~/${projectName} 2>/dev/null`;
+  // Always pass --no-browser to remote since we open browser locally
+  const remoteCommand = `${cdCommand} && af start --port ${localPort} --no-browser`;
+
+  // Check if local port is already in use
+  try {
+    const response = await fetch(`http://localhost:${localPort}/`, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(500),
+    });
+    // If we get here, something is already running on this port
+    fatal(`Port ${localPort} is already in use locally. Stop the existing service or use --port to specify a different port.`);
+  } catch {
+    // Port is available, continue
+  }
+
+  logger.info('Connecting via SSH...');
+
+  // Spawn SSH with port forwarding
+  const sshArgs = [
+    '-L', `${localPort}:localhost:${localPort}`,
+    '-t',  // Force TTY for remote af start
+    '-o', 'ServerAliveInterval=30',  // Keep connection alive
+    '-o', 'ServerAliveCountMax=3',
+    `${user}@${host}`,
+    remoteCommand,
+  ];
+
+  const ssh: ChildProcess = spawn('ssh', sshArgs, {
+    stdio: ['inherit', 'pipe', 'inherit'],
+  });
+
+  // Track if we've seen the dashboard URL
+  let dashboardReady = false;
+  let dashboardUrl = '';
+
+  // Parse SSH stdout for the dashboard URL
+  ssh.stdout?.on('data', (data: Buffer) => {
+    const output = data.toString();
+    process.stdout.write(output); // Echo to user
+
+    // Look for dashboard URL in output
+    const dashboardMatch = output.match(/Dashboard:\s*(http:\/\/localhost:\d+)/);
+    if (dashboardMatch && !dashboardReady) {
+      dashboardReady = true;
+      dashboardUrl = dashboardMatch[1];
+
+      // Give it a moment to fully start, then open browser
+      setTimeout(async () => {
+        logger.blank();
+        logger.success('Remote Agent Farm connected!');
+        logger.kv('Dashboard', `http://localhost:${localPort}`);
+        logger.info('Press Ctrl+C to disconnect');
+
+        if (!options.noBrowser) {
+          await openBrowser(`http://localhost:${localPort}`);
+        }
+      }, 1000);
+    }
+
+    // Detect common remote errors
+    if (output.includes('command not found: af') || output.includes('af: command not found')) {
+      logger.blank();
+      logger.error('Agent Farm (af) is not installed on the remote machine');
+      logger.info('Install it with: npm install -g @cluesmith/codev');
+    }
+    if (output.includes('not a git repository') || output.includes('fatal: not a git repository')) {
+      logger.blank();
+      logger.error('Remote directory is not a git repository');
+      logger.info('Specify the correct path: af start --remote user@host:/path/to/project');
+    }
+  });
+
+  // Handle SSH exit
+  ssh.on('exit', (code) => {
+    logger.blank();
+    if (code === 0) {
+      logger.info('Remote session ended');
+    } else if (code === 255) {
+      logger.error(`SSH connection failed to ${user}@${host}`);
+      logger.info('');
+      logger.info('Common causes:');
+      logger.info('  • Host unreachable: Check network/firewall and that the host is running');
+      logger.info(`  • SSH keys: Run \`ssh-copy-id ${user}@${host}\` to set up key-based auth`);
+      logger.info(`  • Unknown host: Run \`ssh ${user}@${host}\` once to add to known_hosts`);
+    } else if (code === 127) {
+      logger.error('Command not found on remote machine');
+      logger.info('Ensure Agent Farm is installed: npm install -g @cluesmith/codev');
+    } else if (code === 1) {
+      logger.error('Remote command failed');
+      logger.info('Check that:');
+      logger.info('  • The project path exists on the remote machine');
+      logger.info('  • You have permission to access the directory');
+      logger.info('  • Agent Farm dependencies (tmux, ttyd) are installed');
+    } else {
+      logger.error(`Remote session ended with exit code ${code}`);
+    }
+    process.exit(code || 0);
+  });
+
+  // Handle SIGINT to gracefully close SSH
+  process.on('SIGINT', () => {
+    logger.info('Closing remote connection...');
+    ssh.kill('SIGTERM');
+  });
+
+  // Keep the process alive
+  await new Promise(() => {}); // Never resolves - waits for SSH exit
+}
+
+/**
  * Start the architect dashboard
  */
 export async function start(options: StartOptions = {}): Promise<void> {
+  // Handle remote mode
+  if (options.remote) {
+    return startRemote(options);
+  }
+
   const config = getConfig();
 
   // Check for and clean up orphaned tmux sessions
@@ -138,6 +293,7 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   if (options.allowInsecureRemote) {
     logger.warn('⚠️  INSECURE MODE: Binding to 0.0.0.0 - accessible from any network!');
     logger.warn('   No authentication - anyone on your network can access the terminal.');
+    logger.warn('   DEPRECATED: Use `af start --remote user@host` for secure remote access instead.');
   }
 
   const ttydProcess = spawnTtyd({
@@ -174,8 +330,10 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   logger.success('Agent Farm started!');
   logger.kv('Dashboard', `http://localhost:${dashboardPort}`);
 
-  // Open dashboard in browser
-  await openBrowser(`http://localhost:${dashboardPort}`);
+  // Open dashboard in browser (unless --no-browser)
+  if (!options.noBrowser) {
+    await openBrowser(`http://localhost:${dashboardPort}`);
+  }
 }
 
 /**
