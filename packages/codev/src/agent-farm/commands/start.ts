@@ -358,6 +358,10 @@ export async function start(options: StartOptions = {}): Promise<void> {
   // Check all core dependencies (node, tmux, ttyd, git)
   await checkCoreDependencies();
 
+  // Determine dashboard port early (needed for role prompt and server)
+  // If --port was specified, use it for dashboard (important for remote tunneling)
+  const dashboardPort = options.port ? Number(options.port) : config.dashboardPort;
+
   // Command is passed from index.ts (already resolved via CLI > config.json > default)
   let cmd = options.cmd || 'claude';
 
@@ -375,7 +379,7 @@ export async function start(options: StartOptions = {}): Promise<void> {
       // The architect.md file contains backticks, $variables, and other shell-sensitive chars
       const roleFile = resolve(config.stateDir, 'architect-role.md');
       // Inject the actual dashboard port into the role prompt
-      const roleContent = role.content.replace(/\{PORT\}/g, String(config.dashboardPort));
+      const roleContent = role.content.replace(/\{PORT\}/g, String(dashboardPort));
       writeFileSync(roleFile, roleContent, 'utf-8');
 
       const launchScript = resolve(config.stateDir, 'launch-architect.sh');
@@ -469,7 +473,6 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   // Start the dashboard server on the main port
-  const dashboardPort = config.dashboardPort;
   await startDashboard(config.projectRoot, dashboardPort, architectPort, bindHost);
 
   logger.blank();
