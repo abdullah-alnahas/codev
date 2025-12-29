@@ -467,8 +467,10 @@
       orthoCamera.bottom = -frustumSize / 2;
       orthoCamera.updateProjectionMatrix();
 
-      // Scale grid and axes to model size - always 10mm squares
-      const gridSize = Math.ceil(maxDim * 2 / 10) * 10; // Round up to nearest 10mm
+      // Scale grid and axes to model size - always 10mm squares, minimum 10 squares
+      const minGridSize = 100;  // 10 squares of 10mm
+      const neededSize = Math.ceil(maxDim * 2 / 100) * 100; // Round up to nearest 100mm
+      const gridSize = Math.max(minGridSize, neededSize);
       const divisions = gridSize / 10;  // 10mm per square
       scene.remove(gridHelper);
       gridHelper = new THREE.GridHelper(gridSize, divisions, 0x808080, 0x808080);
