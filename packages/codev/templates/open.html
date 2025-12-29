@@ -182,11 +182,34 @@
       color: #888;
     }
 
-    /* Editor textarea */
-    #editor {
+    /* Editor container with line numbers */
+    #editor-container {
       display: none;
-      width: 100%;
       height: calc(100vh - 80px);
+      position: relative;
+    }
+    #editor-line-numbers {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 50px;
+      background: #252525;
+      color: #666;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 15px 8px 15px 0;
+      text-align: right;
+      overflow: hidden;
+      border-right: 1px solid #333;
+      user-select: none;
+      box-sizing: border-box;
+    }
+    #editor {
+      width: calc(100% - 50px);
+      height: 100%;
+      margin-left: 50px;
       font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
       font-size: 13px;
       line-height: 1.5;
@@ -473,8 +496,11 @@
     </div>
   </div>
 
-  <!-- Editor mode -->
-  <textarea id="editor" spellcheck="false"></textarea>
+  <!-- Editor mode with line numbers -->
+  <div id="editor-container">
+    <div id="editor-line-numbers"></div>
+    <textarea id="editor" spellcheck="false"></textarea>
+  </div>
 
   <!-- Search Bar -->
   <div class="search-bar" id="searchBar">
@@ -1279,6 +1305,7 @@
 
     async function toggleEditMode() {
       const viewMode = document.getElementById('viewMode');
+      const editorContainer = document.getElementById('editor-container');
       const editor = document.getElementById('editor');
       const editBtn = document.getElementById('editBtn');
       const saveBtn = document.getElementById('saveBtn');
@@ -1302,14 +1329,15 @@
         // to ensure Cancel always reverts to the true disk state
         editor.value = currentContent;
         viewMode.style.display = 'none';
-        editor.style.display = 'block';
+        editorContainer.style.display = 'block';
         editBtn.textContent = 'Switch to Annotate';
         subtitle.textContent = 'Edit the file directly by clicking and typing.';
         saveBtn.style.display = 'inline-block';
         cancelBtn.style.display = 'inline-block';
         editMode = true;
 
-        // Apply scroll position to editor
+        // Update line numbers and apply scroll position
+        updateEditorLineNumbers();
         editor.scrollTop = scrollTop;
         editor.focus();
       } else {
@@ -1324,7 +1352,7 @@
 
         currentContent = editor.value;
         fileLines = currentContent.split('\n');
-        editor.style.display = 'none';
+        editorContainer.style.display = 'none';
         viewMode.style.display = 'grid';
         editBtn.textContent = 'Switch to Editing';
         subtitle.textContent = 'Click on a line number to leave an annotation.';
@@ -1342,6 +1370,19 @@
         });
       }
     }
+
+    // Update line numbers in editor
+    function updateEditorLineNumbers() {
+      const editor = document.getElementById('editor');
+      const lineNumbers = document.getElementById('editor-line-numbers');
+      const lines = editor.value.split('\n');
+      lineNumbers.innerHTML = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
+    }
+
+    // Sync line numbers scroll with editor scroll
+    document.getElementById('editor').addEventListener('scroll', function() {
+      document.getElementById('editor-line-numbers').scrollTop = this.scrollTop;
+    });
 
     async function saveEdit() {
       const editor = document.getElementById('editor');
@@ -1398,10 +1439,11 @@
       setTimeout(() => notification.remove(), 3000);
     }
 
-    // Track unsaved changes in editor
+    // Track unsaved changes in editor and update line numbers
     document.getElementById('editor').addEventListener('input', () => {
       hasUnsavedChanges = document.getElementById('editor').value !== originalContent;
       updateUnsavedIndicator();
+      updateEditorLineNumbers();
     });
 
     // Tab key handling for indentation
