@@ -247,12 +247,13 @@ export function getConfig(): Config {
   const userConfig = loadUserConfig(projectRoot);
 
   // Use cached ports or fallback to defaults if not initialized
+  const basePort = parseInt(process.env.AF_BASE_PORT || '4200', 10);
   const ports = cachedPorts || {
-    dashboardPort: 4200,
-    architectPort: 4201,
-    builderPortRange: [4210, 4229] as [number, number],
-    utilPortRange: [4230, 4249] as [number, number],
-    openPortRange: [4250, 4269] as [number, number],
+    dashboardPort: basePort,
+    architectPort: basePort + 1,
+    builderPortRange: [basePort + 10, basePort + 29] as [number, number],
+    utilPortRange: [basePort + 30, basePort + 49] as [number, number],
+    openPortRange: [basePort + 50, basePort + 69] as [number, number],
   };
 
   return {

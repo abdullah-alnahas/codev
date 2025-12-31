@@ -15,8 +15,8 @@ import { resolve } from 'node:path';
 import { getGlobalDb, closeGlobalDb } from '../db/index.js';
 import type { DbPortAllocation } from '../db/types.js';
 
-// Base port for first allocation
-const BASE_PORT = 4200;
+// Base port for first allocation (configurable via AF_BASE_PORT env var)
+const BASE_PORT = parseInt(process.env.AF_BASE_PORT || '4200', 10);
 // Ports per project
 const PORT_BLOCK_SIZE = 100;
 // Maximum allocations (4200-9999 = ~58 projects)
