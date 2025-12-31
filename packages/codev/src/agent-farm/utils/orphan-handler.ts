@@ -13,6 +13,19 @@ import { resolve } from 'node:path';
 import { logger } from './logger.js';
 import { run } from './shell.js';
 import { getConfig } from './config.js';
+import { loadState, setArchitect } from '../state.js';
+
+/**
+ * Check if a process is still running
+ */
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface OrphanedSession {
   name: string;
@@ -26,14 +39,11 @@ interface OrphanedSession {
 async function findOrphanedSessions(): Promise<OrphanedSession[]> {
   const config = getConfig();
   const architectPort = config.architectPort;
+  const state = loadState();
 
-  // Project-specific patterns - only match THIS project's sessions
-  const projectPatterns = [
-    new RegExp(`^af-architect-${architectPort}$`),  // Only this project's architect
-    /^builder-\d+$/,  // Builder sessions (already unique per spec)
-    /^util-[A-Z0-9]+$/,  // Util sessions (already unique)
-    /^af-architect$/,  // Legacy pattern (no port) - safe to clean
-  ];
+  // Project-specific patterns - only match THIS project's architect session
+  const architectPattern = new RegExp(`^af-architect-${architectPort}$`);
+  const legacyArchitectPattern = /^af-architect$/;
 
   try {
     const result = await run('tmux list-sessions -F "#{session_name}" 2>/dev/null');
@@ -41,13 +51,22 @@ async function findOrphanedSessions(): Promise<OrphanedSession[]> {
     const orphans: OrphanedSession[] = [];
 
     for (const name of sessions) {
-      if (projectPatterns[0].test(name) || projectPatterns[3].test(name)) {
-        orphans.push({ name, type: 'architect' });
-      } else if (projectPatterns[1].test(name)) {
-        orphans.push({ name, type: 'builder' });
-      } else if (projectPatterns[2].test(name)) {
-        orphans.push({ name, type: 'util' });
+      // Check architect sessions - only orphaned if PID is dead
+      if (architectPattern.test(name) || legacyArchitectPattern.test(name)) {
+        // If we have state for this architect, check if PID is still alive
+        if (state.architect) {
+          if (!isProcessAlive(state.architect.pid)) {
+            // PID is dead but session exists - this is orphaned
+            orphans.push({ name, type: 'architect' });
+          }
+          // If PID is alive, session is NOT orphaned - skip it
+        } else {
+          // No state entry but session exists - orphaned
+          orphans.push({ name, type: 'architect' });
+        }
       }
+      // Note: builder and util sessions use different naming now (af-shell-UXXXXXX)
+      // Those are managed by their own state entries and don't need orphan detection
     }
 
     return orphans;
@@ -96,6 +115,10 @@ export async function handleOrphanedSessions(options: {
     for (const orphan of orphans) {
       if (await killSession(orphan.name)) {
         killed++;
+        // Clear state entry for killed architects
+        if (orphan.type === 'architect') {
+          setArchitect(null);
+        }
         if (!options.silent) {
           logger.debug(`  Killed: ${orphan.name}`);
         }
