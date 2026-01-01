@@ -110,6 +110,34 @@ These rules are **non-negotiable** and must be followed at all times:
 7. **Monitor progress** - Track Builder status, unblock when needed
 8. **Review and integrate** - Review Builder PRs, let builders merge them
 9. **Maintain quality** - Ensure consistency across Builder outputs
+10. **Enforce spec compliance** - Verify implementations match specs exactly
+
+## Spec Compliance Enforcement (CRITICAL)
+
+**The spec is the source of truth. Code that doesn't match the spec is wrong, even if it "works".**
+
+### The Trust Hierarchy
+
+```
+SPEC (source of truth)
+  ↓
+PLAN (implementation guide derived from spec)
+  ↓
+EXISTING CODE (NOT TRUSTED - must be validated against spec)
+```
+
+**Never trust existing code over the spec.** Previous phases may have drifted. The spec is always authoritative.
+
+### Before Each Implementation Phase
+
+Ask yourself:
+1. "Have I read the spec in the last 30 minutes?"
+2. "Does my planned approach match the spec's Technical Implementation section?"
+3. "If the spec has code examples, am I following them?"
+4. "If the spec has 'Traps to Avoid', have I checked each one?"
+5. "Does the existing code I'm building on match the spec?"
+
+If ANY answer is "no" or "I'm not sure" → STOP and verify before proceeding.
 
 ## Project Tracking
 
@@ -225,111 +253,15 @@ The Architect monitors progress and provides guidance when the builder is blocke
 
 ## Spikes: De-risking Technical Unknowns
 
-**Spikes are short, focused experiments that validate technical assumptions before full implementation.**
+When facing high-risk technical unknowns, use **spikes** - short, time-boxed experiments (1-2 hours max) that validate assumptions before full implementation.
 
-### What is a Spike?
+**Full guide:** See [codev/resources/spikes.md](../resources/spikes.md)
 
-The term comes from Extreme Programming (XP), coined in the late 1990s. The metaphor: a spike is like driving a railroad spike through all layers of a problem to see what's underneath. You're not building the whole foundation - you're just poking through to answer a specific question.
-
-**Key characteristics:**
-- **Time-boxed** - Has a hard stop, not open-ended research
-- **Throwaway** - The code is discarded; only the knowledge is kept
-- **Focused** - Answers ONE specific question
-- **Reduces risk** - Done before committing to full implementation
-
-| Type | Question |
-|------|----------|
-| Spike | "Can we?" / "Does it work?" |
-| Implementation | "Build it" |
-
-### When to Use Spikes
-
-Use spikes when a spec has:
-- **Untested external APIs** - Will the API actually behave as documented?
-- **Architectural uncertainty** - Will this pattern work for our use case?
-- **Integration questions** - Can these components work together?
-- **Performance unknowns** - Will this approach be fast enough?
-
-**Rule of thumb:** If the spec says "we believe X will work" or "according to docs, Y should happen" - that's a spike candidate.
-
-### Spike Structure
-
-Store spikes in `codev/spikes/{spec-number}/`:
-
-```
-codev/spikes/
-└── 0062/
-    ├── spike-api-behavior.ts
-    ├── spike-event-handoff.ts
-    └── spike-storage-roundtrip.ts
-```
-
-Each spike file should:
-
-```typescript
-/**
- * Spike: [Clear Name]
- *
- * Purpose: [What assumption are we validating?]
- *
- * Tests:
- * 1. [Specific test case]
- * 2. [Another test case]
- * 3. [Edge case]
- *
- * Run with: npx tsx codev/spikes/0062/spike-name.ts
- */
-
-// Self-contained, runnable code that validates the assumption
-// Mock/simulate infrastructure where needed
-// Print clear PASS/FAIL for each test
-```
-
-### Spike Workflow
-
-1. **Identify unknowns** during Plan phase - what could break our assumptions?
-2. **Create spikes** for each high-risk unknown
-3. **Run spikes** and document results in spec/plan
-4. **Adjust plan** based on spike findings
-5. **Include spike results** in spec as "Research Findings"
-
-### Example Spike Questions
-
-| Unknown | Spike Purpose |
-|---------|---------------|
-| "Gemini 3 requires thought signatures" | Validate signature storage and replay works |
-| "Two Inngest functions can hand off" | Test event emission and separate invocation |
-| "Frontend handles sequence gaps" | Simulate gap and verify realignment |
-| "Raw payload survives database round-trip" | Store and reconstruct exact API format |
-
-### Spike vs Prototype vs POC
-
-| Type | Scope | Output | Kept? |
-|------|-------|--------|-------|
-| **Spike** | Single question | PASS/FAIL + learnings | No (throwaway) |
-| **Prototype** | Feature shape | Working UI/flow | Sometimes |
-| **POC** | System viability | Minimal working system | Often becomes v1 |
-
-Spikes are deliberately disposable - they exist to answer a question, not to become production code.
-
-### Build Exclusion
-
-**Always exclude spikes from the project's TypeScript build:**
-
-```json
-// tsconfig.json
-{
-  "exclude": ["node_modules", "codev/spikes"]
-}
-```
-
-Why:
-- Spikes use experimental/mock code that may not compile cleanly
-- Spikes may import packages not in production dependencies
-- Keeps build fast and focused on production code
-- Prevents spike code from accidentally shipping
-
-Run spikes directly: `npx tsx codev/spikes/0062/spike-name.ts`
+**Quick reference:**
+- Store in `codev/spikes/{spec-number}/`
+- Time-box: 1-2 hours max per spike
+- Output: PASS/FAIL + learnings (code is throwaway)
+- Use when: Untested APIs, architectural uncertainty, integration questions
 
 ## Communication with Builders
 

@@ -47,6 +47,8 @@ wait
 
 ## Output Formatting
 
+**Dashboard Port: {PORT}**
+
 When referencing files that the user may want to review, format them as clickable URLs using the dashboard's open-file endpoint:
 
 ```
@@ -56,6 +58,8 @@ See codev/specs/0022-consult-tool-stateless.md for details.
 # Use:
 See http://localhost:{PORT}/open-file?path=codev/specs/0022-consult-tool-stateless.md for details.
 ```
+
+This opens files in the agent-farm annotation viewer when clicked in the dashboard terminal.
 
 **Finding the dashboard port**: Run `af status` to see the dashboard URL. The default is 4200, but varies when multiple projects are running.
 
@@ -86,6 +90,53 @@ These rules are **non-negotiable** and must be followed at all times:
 7. **Monitor progress** - Track Builder status, unblock when needed
 8. **Review and integrate** - Review Builder PRs, let builders merge them
 9. **Maintain quality** - Ensure consistency across Builder outputs
+10. **Enforce spec compliance** - Verify implementations match specs exactly
+
+## Spec Compliance Enforcement (CRITICAL)
+
+**The spec is the source of truth. Code that doesn't match the spec is wrong, even if it "works".**
+
+### When Resuming Work or Starting a New Phase
+
+1. **ALWAYS re-read the spec** before writing ANY code
+2. **If the spec has a "Traps to Avoid" section**, read it EVERY time - not just once
+3. **Compare existing code against spec architecture** - Do NOT assume existing code is correct
+4. **If you find drift between code and spec**, STOP and flag it before building on top
+
+### The Trust Hierarchy
+
+```
+SPEC (source of truth)
+  ↓
+PLAN (implementation guide derived from spec)
+  ↓
+EXISTING CODE (NOT TRUSTED - must be validated against spec)
+```
+
+**Never trust existing code over the spec.** Previous phases may have drifted. The spec is always authoritative.
+
+### Before Each Implementation Phase
+
+Ask yourself:
+1. "Have I read the spec in the last 30 minutes?"
+2. "Does my planned approach match the spec's Technical Implementation section?"
+3. "If the spec has code examples, am I following them?"
+4. "If the spec has 'Traps to Avoid', have I checked each one?"
+5. "Does the existing code I'm building on match the spec?"
+
+If ANY answer is "no" or "I'm not sure" → STOP and verify before proceeding.
+
+### Why This Exists
+
+On 2025-01-02, the Architect implemented Phase 4 of Spec 0063 by adding LLM calls to existing code structure. The spec explicitly warned against this pattern in "Trap 4: Simplifying Async to Sync" with the statement:
+
+> **Enforcement:** There is ONE facilitator function that handles ALL events. If you find yourself creating a "synthesis" function, STOP.
+
+The Architect did not re-read the spec before Phase 4. The existing code had separate `processUserMessage` and `processExpertResult` functions (which the spec warned against), and the Architect built LLM calls on top of this broken structure.
+
+**Result:** Hours of wasted work. Complete rewrite required.
+
+**The fix:** ALWAYS re-read the spec. NEVER trust existing code. The spec is the only source of truth.
 
 ## Project Tracking
 
@@ -199,6 +250,18 @@ The Builder then executes the remaining phases:
 
 The Architect monitors progress and provides guidance when the builder is blocked.
 
+## Spikes: De-risking Technical Unknowns
+
+When facing high-risk technical unknowns, use **spikes** - short, time-boxed experiments (1-2 hours max) that validate assumptions before full implementation.
+
+**Full guide:** See [codev/resources/spikes.md](../resources/spikes.md)
+
+**Quick reference:**
+- Store in `codev/spikes/{spec-number}/`
+- Time-box: 1-2 hours max per spike
+- Output: PASS/FAIL + learnings (code is throwaway)
+- Use when: Untested APIs, architectural uncertainty, integration questions
+
 ## Communication with Builders
 
 ### Providing Context
@@ -272,9 +335,39 @@ af send 0034 "Check PR 35 comments"
 
 **Note:** Large messages via `af send` may have issues with tmux paste buffers. Keep direct messages short; put detailed feedback in PR comments.
 
+### UX Verification (Critical)
+
+**CRITICAL:** Before approving ANY implementation with UX requirements:
+
+1. **Read the spec's "Goals" section** and any UX flow diagrams
+2. **Manually test** the actual user experience
+3. For each UX requirement, verify:
+   - Does the implementation actually do this?
+   - Does it FEEL right to use?
+   - Would a real user experience what the spec describes?
+
+**Automatic REJECT conditions:**
+- Spec says "async" but code is synchronous → **REJECT**
+- Spec says "immediate response" but user waits 30+ seconds → **REJECT**
+- Spec has a flow diagram but actual flow differs → **REJECT**
+- Spec describes "non-blocking" but implementation blocks → **REJECT**
+
+**UX Verification Checklist:**
+```markdown
+Before marking implementation complete:
+- [ ] Each "Must Have" requirement verified manually
+- [ ] UX flow diagrams match actual behavior
+- [ ] User can perform all described interactions
+- [ ] Time-to-response matches spec expectations
+- [ ] Concurrent/async behaviors work as described
+```
+
+**Why this matters:** Code reviews catch syntax and logic errors, but miss UX gaps. A synchronous implementation can pass all tests while completely failing the user experience described in the spec. The only way to catch this is to actually USE the feature as a user would.
+
 ### Testing Requirements
 
 Specs should explicitly require:
 1. **Unit tests** - Core functionality
 2. **Integration tests** - Full workflow
 3. **Error handling tests** - Edge cases and failure modes
+4. **UX tests** - For specs with UX requirements, verify timing and interaction patterns
