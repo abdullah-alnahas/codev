@@ -4,28 +4,6 @@ The Architect is the orchestrating agent that manages the overall development pr
 
 > **Quick Reference**: See `codev/resources/workflow-reference.md` for stage diagrams and common commands.
 
-## Performance: Parallel & Background Execution
-
-**Wherever possible, run tools in the background and in parallel.** This is critical to getting things done quickly and helping the user get their answers faster.
-
-- **Parallel consultations**: Run 3-way reviews simultaneously, not sequentially
-- **Background tasks**: Use `&` and `wait` for long-running operations
-- **Concurrent searches**: Launch multiple grep/glob operations at once
-- **Non-blocking reads**: Read multiple files in parallel when exploring
-
-```bash
-# Good: Parallel 3-way review
-consult --model gemini pr 83 &
-consult --model codex pr 83 &
-consult --model claude pr 83 &
-wait
-
-# Bad: Sequential (3x slower)
-consult --model gemini pr 83
-consult --model codex pr 83
-consult --model claude pr 83
-```
-
 ## Key Tools
 
 The Architect relies on two primary tools:
@@ -83,6 +61,8 @@ See http://localhost:{PORT}/open-file?path=codev/specs/0022-consult-tool-statele
 
 This opens files in the agent-farm annotation viewer when clicked in the dashboard terminal.
 
+**Finding the dashboard port**: Run `af status` to see the dashboard URL. The default is 4200, but varies when multiple projects are running.
+
 ## Critical Rules
 
 These rules are **non-negotiable** and must be followed at all times:
@@ -116,6 +96,13 @@ These rules are **non-negotiable** and must be followed at all times:
 
 **The spec is the source of truth. Code that doesn't match the spec is wrong, even if it "works".**
 
+### When Resuming Work or Starting a New Phase
+
+1. **ALWAYS re-read the spec** before writing ANY code
+2. **If the spec has a "Traps to Avoid" section**, read it EVERY time - not just once
+3. **Compare existing code against spec architecture** - Do NOT assume existing code is correct
+4. **If you find drift between code and spec**, STOP and flag it before building on top
+
 ### The Trust Hierarchy
 
 ```
@@ -138,6 +125,36 @@ Ask yourself:
 5. "Does the existing code I'm building on match the spec?"
 
 If ANY answer is "no" or "I'm not sure" → STOP and verify before proceeding.
+
+### Why This Exists
+
+On 2025-01-02, the Architect implemented Phase 4 of Spec 0063 by adding LLM calls to existing code structure. The spec explicitly warned against this pattern in "Trap 4: Simplifying Async to Sync" with the statement:
+
+> **Enforcement:** There is ONE facilitator function that handles ALL events. If you find yourself creating a "synthesis" function, STOP.
+
+The Architect did not re-read the spec before Phase 4. The existing code had separate `processUserMessage` and `processExpertResult` functions (which the spec warned against), and the Architect built LLM calls on top of this broken structure.
+
+**Result:** Hours of wasted work. Complete rewrite required.
+
+**The fix:** ALWAYS re-read the spec. NEVER trust existing code. The spec is the only source of truth.
+
+### Recognizing and Breaking "Fixing Mode"
+
+A dangerous pattern: The agent starts looking at symptoms in code, making incremental fixes, copying existing patterns - without going back to the source of truth (spec). Signs include:
+- Making multiple small fixes that don't resolve the issue
+- Copying patterns from existing code without verifying they match the spec
+- Building on top of code that may already be wrong
+- Focusing on "what the code does" instead of "what the spec says it should do"
+
+**Intervention phrases that work** (use these when you see the pattern):
+1. **"What does the spec say about X?"** - Forces spec lookup
+2. **"Check the spec's Traps to Avoid section"** - Targets specific guidance
+3. **"Does this match the spec?"** - Creates verification checkpoint
+4. **"ARE YOU SURE?"** - Triggers doubt and re-verification
+5. **"You're cargo-culting existing patterns"** - Calls out copying without thinking
+6. **"We've been through this cycle"** - Highlights the pattern of undoing/redoing
+
+When reviewing builder work or your own work, actively look for signs of "fixing mode" and intervene early with these phrases.
 
 ## Project Tracking
 

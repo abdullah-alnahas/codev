@@ -99,6 +99,56 @@ TICK is for smaller, well-defined tasks:
 
 Follow the TICK protocol documentation for details.
 
+## Spec Compliance (CRITICAL)
+
+**The spec is the source of truth. Code that doesn't match the spec is wrong, even if it "works".**
+
+### Pre-Implementation Sanity Check (PISC)
+
+**Before writing ANY code, run this checklist:**
+
+1. ✅ "Have I read the spec in the last 30 minutes?"
+2. ✅ "If the spec has a 'Traps to Avoid' section, have I read it?"
+3. ✅ "Does my planned approach match the spec's Technical Implementation section?"
+4. ✅ "If the spec has code examples, am I following them?"
+5. ✅ "Does the existing code I'm building on actually match the spec?"
+
+**If ANY answer is "no" or "I'm not sure" → STOP and re-read the spec before proceeding.**
+
+### The Trust Hierarchy
+
+```
+SPEC (source of truth)
+  ↓
+PLAN (implementation guide derived from spec)
+  ↓
+EXISTING CODE (NOT TRUSTED - must be validated against spec)
+```
+
+**Never trust existing code over the spec.** Previous implementations may have drifted. The spec is always authoritative.
+
+### Avoiding "Fixing Mode"
+
+A dangerous pattern: You start looking at symptoms in code, making incremental fixes, copying existing patterns - without going back to the source of truth (spec). This leads to:
+- Cargo-culting existing patterns that may be wrong
+- Building on broken foundations
+- Implementing something different from what the spec describes
+
+**When you catch yourself "fixing" code:**
+1. STOP
+2. Ask: "What does the spec say about this?"
+3. Re-read the spec's Traps to Avoid section
+4. Verify existing code matches the spec before building on it
+
+### Phrases That Should Trigger Spec Re-reading
+
+If you think or receive any of these, immediately re-read the spec:
+- "Does this match the spec?"
+- "What does the spec say about X?"
+- "Check the spec's Traps to Avoid section"
+- "Are you sure?"
+- "You're cargo-culting existing patterns"
+
 ## Status Lifecycle
 
 ```

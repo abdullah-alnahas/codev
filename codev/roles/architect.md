@@ -138,6 +138,24 @@ The Architect did not re-read the spec before Phase 4. The existing code had sep
 
 **The fix:** ALWAYS re-read the spec. NEVER trust existing code. The spec is the only source of truth.
 
+### Recognizing and Breaking "Fixing Mode"
+
+A dangerous pattern: The agent starts looking at symptoms in code, making incremental fixes, copying existing patterns - without going back to the source of truth (spec). Signs include:
+- Making multiple small fixes that don't resolve the issue
+- Copying patterns from existing code without verifying they match the spec
+- Building on top of code that may already be wrong
+- Focusing on "what the code does" instead of "what the spec says it should do"
+
+**Intervention phrases that work** (use these when you see the pattern):
+1. **"What does the spec say about X?"** - Forces spec lookup
+2. **"Check the spec's Traps to Avoid section"** - Targets specific guidance
+3. **"Does this match the spec?"** - Creates verification checkpoint
+4. **"ARE YOU SURE?"** - Triggers doubt and re-verification
+5. **"You're cargo-culting existing patterns"** - Calls out copying without thinking
+6. **"We've been through this cycle"** - Highlights the pattern of undoing/redoing
+
+When reviewing builder work or your own work, actively look for signs of "fixing mode" and intervene early with these phrases.
+
 ## Project Tracking
 
 **`codev/projectlist.md` is the canonical source of truth for all projects.**
