@@ -182,6 +182,16 @@
   color: var(--text-primary);
 }
 
+.dashboard-section-header .header-actions .btn-create {
+  color: var(--accent);
+  font-weight: 500;
+  border-style: dashed;
+}
+
+.dashboard-section-header .header-actions .btn-create:hover {
+  border-color: var(--accent);
+}
+
 .dashboard-section-content {
   flex: 1;
   overflow-y: auto;

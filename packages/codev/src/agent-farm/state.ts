@@ -80,11 +80,11 @@ export function upsertBuilder(builder: Builder): void {
   db.prepare(`
     INSERT INTO builders (
       id, name, port, pid, status, phase, worktree, branch,
-      tmux_session, type, task_text, protocol_name
+      tmux_session, type, task_text, protocol_name, issue_number
     )
     VALUES (
       @id, @name, @port, @pid, @status, @phase, @worktree, @branch,
-      @tmuxSession, @type, @taskText, @protocolName
+      @tmuxSession, @type, @taskText, @protocolName, @issueNumber
     )
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
@@ -97,7 +97,8 @@ export function upsertBuilder(builder: Builder): void {
       tmux_session = excluded.tmux_session,
       type = excluded.type,
       task_text = excluded.task_text,
-      protocol_name = excluded.protocol_name
+      protocol_name = excluded.protocol_name,
+      issue_number = excluded.issue_number
   `).run({
     id: builder.id,
     name: builder.name,
@@ -111,6 +112,7 @@ export function upsertBuilder(builder: Builder): void {
     type: builder.type,
     taskText: builder.taskText ?? null,
     protocolName: builder.protocolName ?? null,
+    issueNumber: builder.issueNumber ?? null,
   });
 }
 

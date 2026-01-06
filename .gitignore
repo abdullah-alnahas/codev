@@ -4,6 +4,7 @@ tmp/
 .consult/
 .agent-farm/
 .env
+.update-hashes.json
 
 # OS files
 .DS_Store

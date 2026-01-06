@@ -232,35 +232,12 @@ Execute for each phase in the plan. This is a strict cycle that must be complete
 
 **CRITICAL PRECONDITION**: Before starting any phase, verify the previous phase was committed to git. No phase can begin without the prior phase's commit.
 
-### 🔍 PRE-PHASE SPEC COMPLIANCE CHECK (MANDATORY)
-
-**Before starting ANY implementation phase, you MUST:**
-
-1. **Re-read the spec** - Not skim. Actually read it. Every time.
-2. **Check for "Traps to Avoid"** - If the spec has this section, read EVERY trap
-3. **Verify architecture alignment** - Compare your planned approach against:
-   - The spec's Technical Implementation section
-   - Code examples in the spec (these are prescriptive, not illustrative)
-   - Any explicit "DO NOT" or "NEVER" warnings
-4. **Validate existing code** - If building on existing code:
-   - Does the existing code structure match the spec?
-   - If NOT, STOP. Flag the deviation. Do not build on a broken foundation.
-   - Existing code is NOT trusted. Only the spec is the source of truth.
-5. **Document compliance** - Before writing code, explicitly note:
-   - Which spec sections govern this phase
-   - Any traps that apply and how you're avoiding them
-
-**⚠️ BLOCKING**: If you discover existing code violates the spec, you MUST stop and report this before proceeding. Building on non-compliant code compounds the problem.
-
-**Why this exists:** On 2025-01-02, an implementation built LLM calls on top of a code structure that violated the spec's architecture. The spec explicitly warned against this in "Trap 4" but the trap wasn't re-read before implementation. This wasted hours and required a complete rewrite.
-
 **Phase Completion Process**:
-1. **Spec Check** - Re-read spec, verify architecture alignment (NEW)
-2. **Implement** - Build the code for this phase
-3. **Defend** - Write comprehensive tests that guard functionality
-4. **Evaluate** - Assess and discuss with user
-5. **Commit** - Single atomic commit for the phase (MANDATORY before next phase)
-6. **Proceed** - Move to next phase only after commit
+1. **Implement** - Build the code for this phase
+2. **Defend** - Write comprehensive tests that guard functionality
+3. **Evaluate** - Assess and discuss with user
+4. **Commit** - Single atomic commit for the phase (MANDATORY before next phase)
+5. **Proceed** - Move to next phase only after commit
 
 **Handling Failures**:
 - If **Defend** phase reveals gaps → return to **Implement** to fix
@@ -375,28 +352,19 @@ Execute for each phase in the plan. This is a strict cycle that must be complete
 **Purpose**: Verify the implementation fully satisfies the phase requirements and maintains system quality. This is where the critical discussion happens before committing the phase.
 
 **Requirements**:
-1. **Spec Compliance Verification** (DO THIS FIRST)
-   - Re-read spec's "Success Criteria" / "Must Have" section
-   - For EACH criterion, verify implementation matches exactly (not "close enough")
-   - If spec has "Traps to Avoid" section, verify NONE were triggered
-   - If spec has code examples, verify implementation follows the pattern
-   - If spec has flow diagrams, verify actual flow matches
-   - If spec has architecture diagrams, verify code structure matches
-   - **Ask yourself:** "If the spec author reviewed this, would they say it matches?"
-
-2. **Functional Evaluation**
+1. **Functional Evaluation**
    - All acceptance criteria met
    - User scenarios work as expected
    - Edge cases handled properly
    - Error messages are helpful
 
-3. **Non-Functional Evaluation**
+2. **Non-Functional Evaluation**
    - Performance requirements satisfied
    - Security standards maintained
    - Code maintainability assessed
    - Technical debt documented
 
-4. **Deviation Analysis**
+3. **Deviation Analysis**
    - Document any changes from plan
    - Explain reasoning for changes
    - Assess impact on other phases
@@ -458,10 +426,6 @@ Execute for each phase in the plan. This is a strict cycle that must be complete
 - [ ] Previous phase is committed to git (verify with `git log`)
 - [ ] Plan document shows previous phase as `completed`
 - [ ] No outstanding issues from previous phase
-- [ ] **SPEC RE-READ COMPLETE** - Actually read the spec (not skimmed)
-- [ ] **TRAPS CHECKED** - If spec has "Traps to Avoid", read each one
-- [ ] **ARCHITECTURE VERIFIED** - Code structure matches spec's technical design
-- [ ] **EXISTING CODE VALIDATED** - Any code you're building on matches the spec
 
 ### After Implement Phase:
 - [ ] All code for this phase is complete
@@ -484,9 +448,6 @@ Execute for each phase in the plan. This is a strict cycle that must be complete
 - [ ] Test feedback has been addressed
 
 ### After Evaluate Phase:
-- [ ] **SPEC COMPLIANCE VERIFIED** - Implementation matches spec exactly
-- [ ] **NO TRAPS TRIGGERED** - Checked each trap in spec (if any)
-- [ ] **FLOW/ARCHITECTURE MATCHES** - Diagrams in spec match implementation
 - [ ] All acceptance criteria from spec are met
 - [ ] Performance requirements satisfied
 - [ ] Security standards maintained
@@ -499,9 +460,6 @@ Execute for each phase in the plan. This is a strict cycle that must be complete
 - [ ] Commit verified with `git log`
 
 ### ❌ PHASE BLOCKERS (Fix Before Proceeding):
-- **Spec not re-read** - Cannot proceed without reading spec this phase
-- **Spec violation detected** - Implementation doesn't match spec architecture
-- **Trap triggered** - Implementation matches a "Trap to Avoid" pattern
 - Any failing tests
 - Unaddressed expert feedback
 - Missing user approval

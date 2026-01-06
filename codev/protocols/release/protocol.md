@@ -170,3 +170,92 @@ Future releases continue this tradition, drawing from architectural wonders acro
 - **Major** (X.0.0): Breaking changes, major new capabilities
 - **Minor** (0.X.0): New features, backward compatible
 - **Patch** (0.0.X): Bug fixes only
+
+## Release Candidate (RC) Workflow
+
+Starting with v1.7.0, minor releases use a release candidate workflow for testing before stable release.
+
+### npm Dist-Tags
+
+| Tag | Purpose | Install Command |
+|-----|---------|-----------------|
+| `latest` | Stable releases (1.6.0, 1.7.0) | `npm install @cluesmith/codev` |
+| `next` | Release candidates | `npm install @cluesmith/codev@next` |
+
+**Key behavior**: `npm install @cluesmith/codev` only installs stable versions. RCs are never installed unless explicitly requested.
+
+### RC Publishing
+
+```bash
+# Set version to RC
+cd packages/codev
+npm version 1.7.0-rc.1 --no-git-tag-version
+
+# Commit and tag
+cd ../..
+git add packages/codev/package.json packages/codev/package-lock.json
+git commit -m "v1.7.0-rc.1"
+git tag -a v1.7.0-rc.1 -m "v1.7.0-rc.1 - Release candidate"
+git push && git push origin v1.7.0-rc.1
+
+# Publish to "next" channel (NOT "latest")
+cd packages/codev && npm publish --tag next
+```
+
+### RC → Stable Promotion
+
+When an RC is validated and ready for stable release:
+
+```bash
+# Bump to stable version
+cd packages/codev
+npm version 1.7.0 --no-git-tag-version
+
+# Follow standard release process (steps 4-9 above)
+```
+
+### Branch Strategy
+
+```
+main branch (active development)
+    │
+    ├── v1.6.0 ────────────────────────────────► npm @latest
+    │       │
+    │       └── release/1.6.x (created when 1.7.0 ships)
+    │               │
+    │               └── v1.6.1 (backport) ─────► npm @latest
+    │
+    ├── v1.7.0-rc.1 ───────────────────────────► npm @next
+    ├── v1.7.0-rc.2 ───────────────────────────► npm @next
+    └── v1.7.0 ────────────────────────────────► npm @latest
+```
+
+### Backporting Bug Fixes
+
+When a bug is found in a stable release after a newer minor version ships:
+
+```bash
+# Create release branch from the stable tag (if not exists)
+git checkout -b release/1.6.x v1.6.0
+
+# Cherry-pick or implement the fix
+git cherry-pick <commit-hash>
+
+# Bump patch version
+cd packages/codev
+npm version patch --no-git-tag-version
+
+# Commit, tag, and publish
+cd ../..
+git add packages/codev/package.json packages/codev/package-lock.json
+git commit -m "v1.6.1 - Backport: <fix description>"
+git tag -a v1.6.1 -m "v1.6.1 - Backport fix"
+git push origin release/1.6.x && git push origin v1.6.1
+cd packages/codev && npm publish
+```
+
+### When to Use RCs
+
+- **Use RCs** for minor releases (1.7.0, 1.8.0) - allows testing before stable
+- **Skip RCs** for patch releases (1.6.1, 1.6.2) - bug fixes go direct to stable
+- **Skip RCs** for the current release (1.6.0) - already at stable cadence
