@@ -42,7 +42,7 @@ Future releases will continue this tradition, drawing from architectural wonders
 
 To release a new version, simply tell the AI:
 ```
-Let's release v1.4.0
+Let's release v1.6.0
 ```
 
 The AI will guide you through the **RELEASE protocol** (`codev/protocols/release/protocol.md`):
@@ -56,6 +56,24 @@ The AI will guide you through the **RELEASE protocol** (`codev/protocols/release
 8. Discussion forum announcement
 
 The AI handles all the mechanical steps while you approve key decisions.
+
+### Release Candidate Workflow (v1.7.0+)
+
+Starting with v1.7.0, minor releases use release candidates for testing:
+
+```
+1.7.0-rc.1 → 1.7.0-rc.2 → 1.7.0 (stable)
+```
+
+| npm Tag | Purpose | Install Command |
+|---------|---------|-----------------|
+| `latest` | Stable releases | `npm install @cluesmith/codev` |
+| `next` | Release candidates | `npm install @cluesmith/codev@next` |
+
+- **Patch releases** (1.6.1, 1.6.2) go direct to stable for backported bug fixes
+- **Minor releases** (1.7.0, 1.8.0) use RC workflow for testing first
+
+See the full workflow in `codev/protocols/release/protocol.md`.
 
 ## Quick Start
 

@@ -35,6 +35,7 @@ export interface DbBuilder {
   type: string;
   task_text: string | null;
   protocol_name: string | null;
+  issue_number: number | null;
   started_at: string;
   updated_at: string;
 }
@@ -105,6 +106,7 @@ export function dbBuilderToBuilder(row: DbBuilder): Builder {
     type: row.type as BuilderType,
     taskText: row.task_text ?? undefined,
     protocolName: row.protocol_name ?? undefined,
+    issueNumber: row.issue_number ?? undefined,
   };
 }
 

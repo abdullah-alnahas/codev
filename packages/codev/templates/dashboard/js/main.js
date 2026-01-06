@@ -128,7 +128,7 @@ function renderDashboardTabContent() {
           <div class="dashboard-section-header" onclick="toggleSection('files')">
             <h3><span class="collapse-icon">▼</span> Files</h3>
             <div class="header-actions" onclick="event.stopPropagation()">
-              <button onclick="showCreateFileDialog()" title="Create New File">+</button>
+              <button class="btn-create" onclick="showCreateFileDialog()" title="Create New File">+</button>
               <button onclick="refreshFilesTree()" title="Refresh">↻</button>
               <button onclick="collapseAllFolders()" title="Collapse All">⊟</button>
               <button onclick="expandAllFolders()" title="Expand All">⊞</button>

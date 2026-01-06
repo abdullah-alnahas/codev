@@ -38,9 +38,10 @@ CREATE TABLE IF NOT EXISTS builders (
   branch TEXT NOT NULL,
   tmux_session TEXT,
   type TEXT NOT NULL DEFAULT 'spec'
-    CHECK(type IN ('spec', 'task', 'protocol', 'shell', 'worktree')),
+    CHECK(type IN ('spec', 'task', 'protocol', 'shell', 'worktree', 'bugfix')),
   task_text TEXT,
   protocol_name TEXT,
+  issue_number INTEGER,
   started_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
