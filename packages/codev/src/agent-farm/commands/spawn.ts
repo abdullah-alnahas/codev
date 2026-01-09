@@ -90,7 +90,7 @@ function renameClaudeSession(sessionName: string, displayName: string): void {
     } catch {
       // Non-fatal - session naming is a nice-to-have
     }
-  }, 2000); // 2 second delay for Claude to initialize
+  }, 5000); // 5 second delay for Claude to initialize
 }
 
 /**

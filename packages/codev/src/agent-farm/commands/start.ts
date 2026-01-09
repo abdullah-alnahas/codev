@@ -59,7 +59,7 @@ function renameClaudeSession(sessionName: string, displayName: string): void {
     } catch {
       // Non-fatal - session naming is a nice-to-have
     }
-  }, 2000);
+  }, 5000);
 }
 
 /**
