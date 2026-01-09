@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseRemote, isPortAvailable } from '../commands/start.js';
 import * as net from 'net';
+import * as shell from '../utils/shell.js';
 
 describe('parseRemote', () => {
   it('should parse user@host format', () => {
@@ -95,5 +96,28 @@ describe('isPortAvailable', () => {
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+});
+
+/**
+ * Tests for stale architect state recovery (Issue #148)
+ *
+ * These tests verify that the isProcessRunning check correctly identifies
+ * dead PIDs and allows recovery from stale state.
+ *
+ * Note: Tests for setArchitect(null) clearing state are in state.test.ts
+ * which properly mocks the database to avoid mutating live state.
+ */
+describe('stale architect state recovery', () => {
+  it('isProcessRunning returns false for definitely-dead PID', async () => {
+    // PID 999999 is virtually guaranteed not to exist on any system
+    const result = await shell.isProcessRunning(999999);
+    expect(result).toBe(false);
+  });
+
+  it('isProcessRunning returns true for current process PID', async () => {
+    // Our own process is definitely running
+    const result = await shell.isProcessRunning(process.pid);
+    expect(result).toBe(true);
   });
 });
