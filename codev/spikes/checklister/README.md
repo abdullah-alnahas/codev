@@ -268,14 +268,16 @@ This is intentionally small to test the protocol overhead, not implementation co
 ### Files Created
 
 1. **`.claude/commands/checklister.md`** - Skill definition with:
-   - Command syntax (init, status, complete, gate, reset)
+   - Commands: init, status, complete, gate, add-phase, reset, list
    - State file format
-   - Complete checklist item definitions for all phases
-   - Gate logic rules
+   - Complete checklist item definitions for all SPIDER phases (S, P, IDE, R)
+   - Separate I/D/E stage tracking within IDE loop
+   - Gate logic rules for phase AND stage transitions
 
-2. **`.spider-state.json`** - State file with:
-   - Project metadata (id, protocol, started_at)
-   - Current phase tracking
+2. **`codev/checklists/`** - Directory for per-project state files:
+   - One JSON file per project (e.g., `0069.json`)
+   - Project metadata (id, spec_name, protocol, started_at)
+   - Current phase AND stage tracking
    - Completed items with timestamps and evidence
    - Dynamic implementation_phases section
 
@@ -319,6 +321,20 @@ This is intentionally small to test the protocol overhead, not implementation co
 4. **No undo mechanism**
    - Once marked complete, can't easily undo
    - **Mitigation**: Reset command exists for full reset
+
+### Command Summary
+
+| Command | Description |
+|---------|-------------|
+| `/checklister init <id>` | Initialize checklist for project |
+| `/checklister status [id]` | Show checklist state |
+| `/checklister complete <item> [--evidence "..."]` | Mark item done |
+| `/checklister gate <target>` | Check phase/stage transition |
+| `/checklister add-phase <name>` | Add implementation phase |
+| `/checklister reset [--project <id>]` | Clear state |
+| `/checklister list` | List all active checklists |
+
+Gate targets: `plan`, `implement`, `defend`, `evaluate`, `next-phase`, `review`
 
 ### Recommendations for Next Steps
 
