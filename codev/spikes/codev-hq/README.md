@@ -3,8 +3,9 @@
 **Goal**: Build a minimal working implementation of the CODEV_HQ architecture from Spec 0068 to validate the core concepts.
 
 **Time-box**: 4-6 hours
-**Status**: IN PROGRESS
+**Status**: COMPLETE
 **Started**: 2026-01-16
+**Completed**: 2026-01-16
 
 ## Hypothesis
 
@@ -171,12 +172,70 @@ EOF
 # Verify local file updated
 ```
 
-## Notes
+## Implementation Notes
+
+### What was built
+
+1. **HQ Server** (`packages/codev-hq/`)
+   - Express + ws WebSocket server on port 4300
+   - In-memory state management with event subscription
+   - Message handlers for register, ping/pong, status_update, builder_update
+   - REST API endpoints: `/api/state`, `/api/approve`
+
+2. **HQ Connector** (`packages/codev/src/agent-farm/hq-connector.ts`)
+   - Connects to HQ when `CODEV_HQ_URL` env var is set
+   - Registers on connect with project info
+   - Watches `codev/status/` directory for changes
+   - Syncs status files to HQ in real-time
+   - Handles approval messages, updates local files, creates git commits
+
+3. **React Dashboard** (`packages/codev-hq/dashboard/`)
+   - Vite + React 19 with TypeScript
+   - Shows connected instances, projects, builders
+   - Parses status file YAML frontmatter to display gates
+   - "Approve" button for pending gates
+   - Real-time updates via WebSocket + polling fallback
+
+### Dependencies added
+
+- `packages/codev-hq/`: express, ws, chalk
+- `packages/codev/`: ws, glob (for status file pattern matching)
+
+### Design decisions
 
 - Start with ws:// not wss:// for spike simplicity
-- Skip auth complexity - single hardcoded API key
+- Skip auth complexity - single hardcoded API key (`dev-key-spike`)
 - Use Vite's built-in HMR for dashboard development
 - Keep state in-memory, restart loses everything (fine for spike)
+- Use glob pattern matching for status file discovery
+- Simple regex-based YAML parsing (not a full YAML parser)
+
+### Known limitations
+
+- Dashboard WebSocket doesn't proxy through Vite in production build
+- Gate parsing is simplistic (regex, not full YAML parser)
+- No TLS/authentication beyond simple API key
+- Single project per instance assumed
+
+## Spike Results
+
+The spike successfully demonstrated all core concepts from Spec 0068:
+
+| Criterion | Result |
+|-----------|--------|
+| Agent Farm connects to HQ on startup | PASS |
+| Status files sync to HQ within 1s | PASS |
+| Dashboard shows project status real-time | PASS |
+| Clicking "Approve" updates local status file | PASS |
+| Git commit created for approval | PASS |
+
+### Recommendation
+
+The architecture is viable. Key learnings for full implementation:
+1. Use a proper YAML parser (js-yaml) instead of regex
+2. Need proper WebSocket proxy for production dashboard
+3. Consider using SSE instead of WebSocket for dashboard (simpler)
+4. Status file format works well - no changes needed
 
 ## References
 

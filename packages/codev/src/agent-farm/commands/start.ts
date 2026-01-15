@@ -18,6 +18,7 @@ import { loadState, setArchitect } from '../state.js';
 import { handleOrphanedSessions, warnAboutStaleArtifacts } from '../utils/orphan-handler.js';
 import { getPortBlock, cleanupStaleEntries } from '../utils/port-registry.js';
 import { loadRolePrompt } from '../utils/roles.js';
+import { initHQConnector, isHQEnabled } from '../hq-connector.js';
 
 /**
  * Format current date/time as YYYY-MM-DD HH:MM
@@ -491,9 +492,17 @@ exec ${cmd} --append-system-prompt "$(cat '${roleFile}')"
   // Start the dashboard server on the main port
   await startDashboard(config.projectRoot, dashboardPort, architectPort, bindHost);
 
+  // Initialize HQ connector if CODEV_HQ_URL is set
+  if (isHQEnabled()) {
+    initHQConnector(config.projectRoot);
+  }
+
   logger.blank();
   logger.success('Agent Farm started!');
   logger.kv('Dashboard', `http://localhost:${dashboardPort}`);
+  if (isHQEnabled()) {
+    logger.kv('HQ', process.env.CODEV_HQ_URL!);
+  }
 
   // Open dashboard in browser (unless --no-browser)
   if (!options.noBrowser) {
