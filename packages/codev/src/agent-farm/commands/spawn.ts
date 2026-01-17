@@ -97,7 +97,7 @@ function renameClaudeSession(sessionName: string, displayName: string): void {
  * Initialize checklister state for a builder
  * Builders start at the "implement" phase (Architect has already done S+P)
  */
-function initBuilderChecklist(worktreePath: string, projectId: string, specName: string): void {
+function initBuilderChecklist(worktreePath: string, projectId: string, specName: string, protocol: string = 'spider'): void {
   const checklistDir = resolve(worktreePath, 'codev', 'checklists');
   const checklistFile = resolve(checklistDir, `${projectId}.json`);
 
@@ -110,7 +110,7 @@ function initBuilderChecklist(worktreePath: string, projectId: string, specName:
   const initialState = {
     project_id: projectId,
     spec_name: specName,
-    protocol: 'spider',
+    protocol: protocol,
     current_phase: 'implement',
     current_impl_phase: null,
     current_stage: 'implement',
@@ -474,19 +474,35 @@ async function spawnSpec(options: SpawnOptions, config: Config): Promise<void> {
   await checkDependencies();
   await createWorktree(config, branchName, worktreePath);
 
+  // Parse protocol from spec file metadata
+  const specContent = readFileSync(specFile, 'utf-8');
+  const protocolMatch = specContent.match(/\*\*Protocol\*\*:\s*(\w+)/i);
+  const protocol = protocolMatch ? protocolMatch[1].toUpperCase() : 'SPIDER';
+  const protocolPath = `codev/protocols/${protocol.toLowerCase()}/protocol.md`;
+
   // Initialize checklister for the builder at implement phase
-  initBuilderChecklist(worktreePath, projectId, specName);
+  initBuilderChecklist(worktreePath, projectId, specName, protocol.toLowerCase());
 
   // Build the prompt
   const specRelPath = `codev/specs/${specName}.md`;
   const planRelPath = `codev/plans/${specName}.md`;
-  let initialPrompt = `Implement the feature specified in ${specRelPath}.`;
+
+  let initialPrompt = `## Protocol
+Follow the ${protocol} protocol STRICTLY: ${protocolPath}
+Read and internalize the protocol before starting any work.
+
+## Task
+Implement the feature specified in ${specRelPath}.`;
   if (hasPlan) {
     initialPrompt += ` Follow the implementation plan in ${planRelPath}.`;
   }
-  initialPrompt += ` Start by reading the spec${hasPlan ? ' and plan' : ''}, then begin implementation.`;
+  initialPrompt += `
 
-  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition. ${initialPrompt}`;
+Start by reading the protocol, spec${hasPlan ? ', and plan' : ''}, then begin implementation.`;
+
+  const builderPrompt = `You are a Builder. Read codev/roles/builder.md for your full role definition.
+
+${initialPrompt}`;
 
   // Load role
   const role = options.noRole ? null : loadRolePrompt(config, 'builder');
