@@ -133,14 +133,14 @@ Projects currently in development (conceived through committed), sorted by prior
 ```yaml
 # High Priority
 
-  - id: "0071"
+  - id: "0072"
     title: "Ralph-SPIDER Integration Spike"
     summary: "Spike to reimagine SPIDER using Ralph principles: Builder owns entire lifecycle, human gates as backpressure"
     status: conceived
     priority: high
     release: v2.0.0
     files:
-      spec: null
+      spec: codev/specs/0072-ralph-spider-spike.md
       plan: null
       review: null
     dependencies: ["0069", "0070"]
@@ -747,7 +747,7 @@ Completed projects not associated with any formal release (ad-hoc fixes, documen
 
 ## Next Available Number
 
-**0072** - Reserve this number for your next project
+**0073** - Reserve this number for your next project
 
 ---
 

@@ -1,7 +1,7 @@
 # Spike Specification: Ralph-SPIDER Integration
 
 ## Metadata
-- **ID**: 0071
+- **ID**: 0072
 - **Status**: conceived
 - **Created**: 2026-01-19
 - **Protocol**: SPIKE
