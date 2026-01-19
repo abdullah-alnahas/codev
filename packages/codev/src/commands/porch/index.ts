@@ -17,7 +17,6 @@ import type {
   ProjectState,
   PorchRunOptions,
   PorchInitOptions,
-  LegacyProtocol,
 } from './types.js';
 import {
   getProjectDir,
@@ -40,7 +39,7 @@ import {
   extractPhasesFromPlanFile,
   findPlanFile,
   getCurrentPhase,
-  getNextPhase,
+  getNextPhase as getNextPlanPhase,
   allPhasesComplete,
 } from './plan-parser.js';
 import { extractSignal, parseSignal } from './signal-parser.js';
@@ -50,120 +49,40 @@ import {
   formatConsultationResults,
   hasConsultation,
 } from './consultation.js';
+import {
+  loadProtocol as loadProtocolFromLoader,
+  listProtocols as listProtocolsFromLoader,
+} from './protocol-loader.js';
+import {
+  createNotifier,
+} from './notifications.js';
 
 // ============================================================================
-// Protocol Loading
+// Protocol Loading (delegates to protocol-loader.ts)
 // ============================================================================
-
-/**
- * Get the protocols directory (checks local first, then skeleton)
- * New structure: codev-skeleton/protocols/<name>/protocol.json
- */
-function getProtocolsDir(projectRoot: string): string {
-  // Check local codev/protocols first
-  const localDir = path.join(projectRoot, 'codev', 'protocols');
-  if (fs.existsSync(localDir)) {
-    return localDir;
-  }
-  // Then skeleton
-  return path.join(getSkeletonDir(), 'protocols');
-}
 
 /**
  * List available protocols
+ * Delegates to protocol-loader.ts for proper conversion
  */
 export function listProtocols(projectRoot?: string): string[] {
   const root = projectRoot || findProjectRoot();
-  const protocolsDir = getProtocolsDir(root);
-
-  if (!fs.existsSync(protocolsDir)) {
-    return [];
-  }
-
-  const entries = fs.readdirSync(protocolsDir, { withFileTypes: true });
-  const protocols: string[] = [];
-
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      // Check for protocol.json in the directory
-      const jsonPath = path.join(protocolsDir, entry.name, 'protocol.json');
-      if (fs.existsSync(jsonPath)) {
-        protocols.push(entry.name);
-      }
-    }
-  }
-
-  return protocols;
+  return listProtocolsFromLoader(root);
 }
 
 /**
  * Load a protocol definition
- * Supports both new format (protocol.json in directory) and legacy format
+ * Delegates to protocol-loader.ts which properly converts steps→substates
  */
 export function loadProtocol(name: string, projectRoot?: string): Protocol {
   const root = projectRoot || findProjectRoot();
+  const protocol = loadProtocolFromLoader(root, name);
 
-  // Check local first: codev/protocols/<name>/protocol.json
-  const localDir = path.join(root, 'codev', 'protocols', name);
-  const localJsonPath = path.join(localDir, 'protocol.json');
-  if (fs.existsSync(localJsonPath)) {
-    return normalizeProtocol(JSON.parse(fs.readFileSync(localJsonPath, 'utf-8')));
+  if (!protocol) {
+    throw new Error(`Protocol not found: ${name}\nAvailable protocols: ${listProtocols(root).join(', ')}`);
   }
 
-  // Check skeleton: protocols/<name>/protocol.json
-  const skeletonDir = path.join(getSkeletonDir(), 'protocols', name);
-  const skeletonJsonPath = path.join(skeletonDir, 'protocol.json');
-  if (fs.existsSync(skeletonJsonPath)) {
-    return normalizeProtocol(JSON.parse(fs.readFileSync(skeletonJsonPath, 'utf-8')));
-  }
-
-  // Legacy: codev/porch/protocols/<name>.json (flat file)
-  const legacyLocalPath = path.join(root, 'codev', 'porch', 'protocols', `${name}.json`);
-  if (fs.existsSync(legacyLocalPath)) {
-    return normalizeProtocol(JSON.parse(fs.readFileSync(legacyLocalPath, 'utf-8')));
-  }
-
-  // Legacy skeleton: porch/protocols/<name>.json
-  const legacySkeletonPath = path.join(getSkeletonDir(), 'porch', 'protocols', `${name}.json`);
-  if (fs.existsSync(legacySkeletonPath)) {
-    return normalizeProtocol(JSON.parse(fs.readFileSync(legacySkeletonPath, 'utf-8')));
-  }
-
-  throw new Error(`Protocol not found: ${name}\nAvailable protocols: ${listProtocols(root).join(', ')}`);
-}
-
-/**
- * Normalize protocol to current format
- * Handles both new and legacy protocol structures
- */
-function normalizeProtocol(raw: Protocol | LegacyProtocol): Protocol {
-  // Check if it's a legacy protocol
-  if ('initial_state' in raw && 'gates' in raw) {
-    const legacy = raw as LegacyProtocol;
-    return {
-      name: legacy.name,
-      version: legacy.version,
-      description: legacy.description,
-      phases: legacy.phases.map(p => ({
-        ...p,
-        // Convert legacy gate references to inline gates
-        gate: legacy.gates.find(g => g.after_state.startsWith(p.id))
-          ? {
-              after: legacy.gates.find(g => g.after_state.startsWith(p.id))!.after_state.split(':')[1] || 'review',
-              type: legacy.gates.find(g => g.after_state.startsWith(p.id))!.type,
-              next: legacy.gates.find(g => g.after_state.startsWith(p.id))!.next_state,
-            }
-          : undefined,
-      })),
-      initial: legacy.initial_state,
-      config: {
-        poll_interval: legacy.config.poll_interval,
-        max_iterations: legacy.config.max_iterations,
-      },
-    };
-  }
-
-  return raw as Protocol;
+  return protocol;
 }
 
 /**
@@ -503,6 +422,9 @@ export async function run(
   const pollInterval = options.pollInterval || protocol.config?.poll_interval || 30;
   const maxIterations = protocol.config?.max_iterations || 100;
 
+  // Create notifier for this project (desktop notifications for important events)
+  const notifier = createNotifier(projectId, { desktop: true });
+
   console.log(chalk.blue(`[porch] Starting ${state.protocol} loop for project ${projectId}`));
   console.log(chalk.blue(`[porch] Status file: ${statusFilePath}`));
   console.log(chalk.blue(`[porch] Poll interval: ${pollInterval}s`));
@@ -560,6 +482,7 @@ export async function run(
         const nextState = getGateNextState(protocol, phaseId);
         if (nextState) {
           console.log(chalk.green(`[porch] Gate ${gateId} passed! Proceeding to ${nextState}`));
+          await notifier.gateApproved(gateId);
 
           // If entering a phased phase, start with first plan phase
           if (isPhasedPhase(protocol, nextState.split(':')[0]) && currentState.plan_phases?.length) {
@@ -577,6 +500,7 @@ export async function run(
           currentState = requestGateApproval(currentState, gateId);
           await writeState(statusFilePath, currentState);
           console.log(chalk.yellow(`[porch] Gate approval requested: ${gateId}`));
+          await notifier.gatePending(phaseId, gateId);
         }
 
         console.log(chalk.yellow(`[porch] BLOCKED - Waiting for gate: ${gateId}`));
@@ -601,6 +525,9 @@ export async function run(
       console.log(chalk.cyan(`[phase] Phase: ${phaseId}`));
     }
 
+    // Notify phase start
+    await notifier.phaseStart(phaseId);
+
     // Execute phase
     const output = await invokeClaude(protocol, phaseId, currentState, statusFilePath, projectRoot, options);
     const signal = extractSignal(output);
@@ -616,6 +543,10 @@ export async function run(
       console.log(formatCheckResults(checkResult));
 
       if (!checkResult.success) {
+        // Notify about check failure
+        const failedCheck = checkResult.checks.find(c => !c.success);
+        await notifier.checkFailed(phaseId, failedCheck?.name || 'build/test', failedCheck?.error || 'Check failed');
+
         // If checks fail, handle based on check configuration
         if (checkResult.returnTo) {
           console.log(chalk.yellow(`[porch] Checks failed, returning to ${checkResult.returnTo}`));
@@ -639,6 +570,7 @@ export async function run(
       // Check if consultation is triggered by current substate
       if (consultConfig.on === currentSubstate || consultConfig.on === phaseId) {
         console.log(chalk.blue(`[porch] Consultation triggered for phase ${phaseId}`));
+        await notifier.consultationStart(phaseId, consultConfig.models || ['gemini', 'codex', 'claude']);
 
         const consultResult = await runConsultationLoop(consultConfig, {
           subcommand: consultConfig.type.includes('pr') ? 'pr' : consultConfig.type.includes('spec') ? 'spec' : 'plan',
@@ -649,6 +581,7 @@ export async function run(
         });
 
         console.log(formatConsultationResults(consultResult));
+        await notifier.consultationComplete(phaseId, consultResult.feedback, consultResult.allApproved);
 
         // If not all approved, stay in current state for revision
         if (!consultResult.allApproved) {
@@ -944,17 +877,18 @@ export async function porch(options: PorchOptions): Promise<void> {
 
   switch (subcommand.toLowerCase()) {
     case 'run': {
-      let projectId = args[0];
+      let projectId: string = args[0];
 
       // Auto-detect project if not provided
       if (!projectId) {
-        projectId = autoDetectProject();
-        if (!projectId) {
+        const detected = autoDetectProject();
+        if (!detected) {
           throw new Error(
             'Usage: porch run <project-id>\n' +
             'Or run from a project worktree to auto-detect.'
           );
         }
+        projectId = detected;
         console.log(chalk.blue(`[porch] Auto-detected project: ${projectId}`));
       }
 
