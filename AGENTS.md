@@ -86,6 +86,7 @@ You are working in the Codev project itself, with multiple development protocols
 - **TICK**: Amendment workflow for existing specs - `codev/protocols/tick/protocol.md`
 - **EXPERIMENT**: Disciplined experimentation - `codev/protocols/experiment/protocol.md`
 - **MAINTAIN**: Codebase maintenance (code hygiene + documentation sync) - `codev/protocols/maintain/protocol.md`
+- **SPIDER-UX**: UI/UX development with Playwright MCP verification - `codev/protocols/spider-ux/protocol.md`
 
 Key locations:
 - Protocol details: `codev/protocols/` (Choose appropriate protocol)
@@ -203,6 +204,14 @@ af cleanup --issue 42    # Cleanup after merge
 - Before releases (clean slate for shipping)
 - After major features complete
 - Syncing documentation (arch.md, lessons-learned.md, CLAUDE.md/AGENTS.md)
+
+### Use SPIDER-UX for (UI/UX development):
+- User interface development with visual verification requirements
+- Features requiring Playwright MCP browser automation
+- MSW (Mock Service Worker) for backend-less UI demos
+- UI state matrix validation (Initial, Loading, Success, Empty, Error, Saving)
+- Responsive design verification across breakpoints
+- Accessibility compliance verification (ARIA, semantic HTML)
 
 ### Skip formal protocols for:
 - README typos or minor documentation fixes

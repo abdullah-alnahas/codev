@@ -786,5 +786,6 @@ Before starting a project, verify its dependencies are at least `implemented`.
 
 ### Protocol Selection
 - **SPIDER**: Most projects (formal spec → plan → implement → review)
+- **SPIDER-UX**: UI/UX development (with Playwright MCP verification)
 - **TICK**: Small, well-defined tasks (< 300 lines) or amendments to existing specs
 - **EXPERIMENT**: Research/prototyping before committing to a project
