@@ -9,6 +9,7 @@
       "name": "Specify",
       "description": "Collaborative design exploration and specification",
       "type": "once",
+      "prompt": "specify.md",
       "steps": [
         "clarifying_questions",
         "problem_analysis",
@@ -40,6 +41,7 @@
       "name": "Plan",
       "description": "Implementation planning with phased breakdown",
       "type": "once",
+      "prompt": "plan.md",
       "steps": [
         "analyze_spec",
         "identify_phases",
@@ -68,6 +70,7 @@
       "name": "Implement",
       "description": "Code implementation following the plan",
       "type": "per_plan_phase",
+      "prompt": "implement.md",
       "steps": [
         "read_phase",
         "implement_code",
@@ -96,6 +99,7 @@
       "name": "Defend",
       "description": "Testing and verification",
       "type": "per_plan_phase",
+      "prompt": "defend.md",
       "steps": [
         "write_tests",
         "run_tests",
@@ -131,6 +135,7 @@
       "name": "Evaluate",
       "description": "Verify implementation against spec",
       "type": "per_plan_phase",
+      "prompt": "evaluate.md",
       "steps": [
         "check_spec_compliance",
         "check_success_criteria",
@@ -152,6 +157,7 @@
       "name": "Review",
       "description": "Final review and lessons learned",
       "type": "once",
+      "prompt": "review.md",
       "steps": [
         "create_review_document",
         "document_lessons",
