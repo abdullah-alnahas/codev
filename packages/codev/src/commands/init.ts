@@ -12,10 +12,12 @@ import { getTemplatesDir } from '../lib/templates.js';
 import { prompt, confirm } from '../lib/cli-prompts.js';
 import {
   createUserDirs,
+  createProjectsDir,
   copyProjectlist,
   copyProjectlistArchive,
   copyConsultTypes,
   copyResourceTemplates,
+  copyProtocols,
   copyRootFiles,
   createGitignore,
 } from '../lib/scaffold.js';
@@ -82,6 +84,13 @@ export async function init(projectName?: string, options: InitOptions = {}): Pro
     fileCount++;
   }
 
+  // Create projects directory for porch state files
+  const projectsDirResult = createProjectsDir(targetDir);
+  if (projectsDirResult.created) {
+    console.log(chalk.green('  +'), 'codev/projects/');
+    fileCount++;
+  }
+
   // Create projectlist.md
   const projectlistResult = copyProjectlist(targetDir, skeletonDir);
   if (projectlistResult.copied) {
@@ -111,6 +120,17 @@ export async function init(projectName?: string, options: InitOptions = {}): Pro
   }
   for (const file of consultTypesResult.copied) {
     console.log(chalk.green('  +'), `codev/consult-types/${file}`);
+    fileCount++;
+  }
+
+  // Copy protocol definitions (required for porch orchestration)
+  const protocolsResult = copyProtocols(targetDir, skeletonDir);
+  if (protocolsResult.directoryCreated) {
+    console.log(chalk.green('  +'), 'codev/protocols/');
+    fileCount++;
+  }
+  for (const protocol of protocolsResult.copied) {
+    console.log(chalk.green('  +'), `codev/protocols/${protocol}`);
     fileCount++;
   }
 
