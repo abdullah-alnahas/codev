@@ -3,6 +3,151 @@
 
 > **Quick Reference**: See `codev/resources/workflow-reference.md` for stage diagrams and common commands.
 
+---
+
+## 🧠 UI/UX Design Principles (MANDATORY READING)
+
+**Before beginning ANY design work, you MUST internalize these principles. They are not suggestions—they are constraints that govern every design decision.**
+
+> **The Meta-Principle**: *Respect your user's time, attention, and intelligence—then design as if they have none of these to spare.*
+
+Users are distracted, impatient, and not reading your interface—they're scanning it while doing three other things. Every element must earn its place.
+
+### Core Laws (Memorize These)
+
+| Law | Principle | Design Implication |
+|-----|-----------|-------------------|
+| **Don't Make Me Think** | Every element should be self-evident | If users pause to figure something out, you've failed |
+| **Jakob's Law** | Users expect your site to work like others they know | Novelty is the enemy of usability—follow conventions |
+| **Fitts's Law** | Target acquisition depends on size and distance | Big buttons, placed where users naturally look/move |
+| **Hick's Law** | More choices = slower decisions | Fewer options, progressive disclosure |
+| **Miller's Law** | Working memory holds ~7±2 items | Chunk information into digestible groups |
+| **Aesthetic-Usability Effect** | Beautiful = perceived as more usable | Polish matters—users forgive flaws in attractive designs |
+
+### Foundational Principles
+
+| Principle | Requirement |
+|-----------|-------------|
+| **Visibility of System Status** | Always inform users what's happening (spinners, progress, confirmations) |
+| **Match System to Real World** | Use familiar language, icons, metaphors (trash can, floppy disk) |
+| **User Control & Freedom** | Provide clear exits—undo, cancel, back buttons |
+| **Consistency & Standards** | Internal consistency + platform conventions |
+| **Error Prevention > Error Messages** | Disable invalid options, smart defaults, confirm destructive actions |
+| **Recognition Over Recall** | Show options, don't require memorization (dropdowns, autocomplete) |
+
+### Mental Models
+
+| Concept | Application |
+|---------|-------------|
+| **Gulf of Execution/Evaluation** | Bridge both: help users know HOW to act and WHAT happened |
+| **Affordances & Signifiers** | Objects must LOOK like what they DO (buttons look clickable) |
+| **Principle of Least Surprise** | Systems behave as expected—warn about unexpected behavior |
+| **Progressive Disclosure** | Show only what's needed; hide advanced options |
+| **80/20 Rule** | 80% of users use 20% of features—optimize for common paths |
+
+### Psychological Principles
+
+| Principle | Design Technique |
+|-----------|-----------------|
+| **Peak-End Rule** | Smooth endings redeem bumpy flows—nail the confirmation/offboarding |
+| **Serial Position Effect** | Users remember first/last items—put important nav at top and bottom |
+| **Loss Aversion** | "Don't lose your progress" > "Save your progress" |
+| **Social Proof** | Show activity, user counts, testimonials |
+| **Zeigarnik Effect** | Incomplete tasks occupy mental space—use progress bars, checklists |
+
+### Process & Methodology
+
+| Framework | Application |
+|-----------|-------------|
+| **User-Centered Design (UCD)** | Decisions driven by user research, not assumptions. Iterate: Research → Design → Prototype → Test → Refine |
+| **Jobs To Be Done (JTBD)** | Users "hire" your interface to accomplish a job. Ask: "What job is the user hiring this to do?" |
+| **Double Diamond** | Discover (diverge) → Define (converge) → Develop (diverge) → Deliver (converge) |
+| **Usability Testing** | Watch real users attempt real tasks. 5 users uncover ~85% of problems. You will be humbled. |
+
+### Practical Heuristics
+
+| Heuristic | Rule |
+|-----------|------|
+| **F-Pattern/Z-Pattern** | Place critical content along natural scan paths |
+| **White Space** | Breathing room improves comprehension—don't cram |
+| **3-Click Rule** | Each click must feel productive and confident |
+| **Mobile-First** | Constraints force clarity—design for small screens first |
+
+### Quick Reference Checklist
+
+Before starting any design, verify you can answer YES to all:
+
+- [ ] **Self-Evident?** Can users understand this without thinking?
+- [ ] **Conventional?** Does this match user expectations from other sites?
+- [ ] **Accessible?** Are touch targets large enough? Is content chunked?
+- [ ] **Progressive?** Is complexity revealed only when needed?
+- [ ] **Forgiving?** Can users recover from mistakes easily?
+- [ ] **Informative?** Does the system always show its status?
+- [ ] **Consistent?** Same actions produce same results throughout?
+
+### Principles Integration Through the Protocol
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    PRINCIPLES WORKFLOW                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────┐                                                         │
+│  │  MEMORIZE   │  Before ANY design work:                                │
+│  │  PRINCIPLES │  • Read the principles above                            │
+│  │             │  • Internalize the Quick Reference Checklist            │
+│  └──────┬──────┘                                                         │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  SPECIFY    │  Run Principles Alignment Check                         │
+│  │             │  • Does spec violate any principle?                     │
+│  │             │  • Are all states defined?                              │
+│  └──────┬──────┘                                                         │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  PLAN       │  Principles-Driven Component Design                     │
+│  │             │  • Apply principles to each component decision          │
+│  │             │  • Document principle-based rationale                   │
+│  └──────┬──────┘                                                         │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  IMPLEMENT  │  Implementation Principles Checklist                    │
+│  │             │  • Verify during every decision                         │
+│  │             │  • Forms, Navigation, Interactions                      │
+│  └──────┬──────┘                                                         │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  DEFEND     │  🚨 MANDATORY: Principles Verification Gate             │
+│  │             │  • Run automated Playwright checks                      │
+│  │             │  • ALL 12 principles must PASS                          │
+│  │             │  • If ANY fail → return to Implement                    │
+│  └──────┬──────┘                                                         │
+│         │ (only if ALL pass)                                             │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  EVALUATE   │  Principles Compliance Report                           │
+│  │             │  • Include in Review Handover                           │
+│  │             │  • Evidence for each principle                          │
+│  └──────┬──────┘                                                         │
+│         │                                                                │
+│         ▼                                                                │
+│  ┌─────────────┐                                                         │
+│  │  REVIEW     │  Principles Reflection                                  │
+│  │             │  • What worked? What violations were caught?            │
+│  │             │  • Update lessons for future work                       │
+│  └─────────────┘                                                         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**The Defense Gate is NON-NEGOTIABLE**: You cannot declare "done" until all 12 principles pass automated verification.
+
+---
+
 ## Executive Summary
 
 SPIDER-UX is a specialized protocol for autonomous AI agents building verified, backend-less web applications. It addresses the core challenge in UI/UX engineering: the **"Feedback Gap"**—the disconnect between an agent's code generation capabilities and its ability to perceive the visual and interactive consequences of that code.
@@ -140,14 +285,32 @@ layout_rules:
 - Tablet: 768px
 - Desktop: 1024px+
 
+#### 5. Principles Alignment Check
+
+**MANDATORY**: Before finalizing the spec, verify alignment with UI/UX principles:
+
+| Principle Category | Verification Question | ✓ |
+|--------------------|----------------------|---|
+| **Don't Make Me Think** | Is every element self-evident? No cognitive friction? | |
+| **Jakob's Law** | Does this follow conventions users already know? | |
+| **Fitts's Law** | Are primary actions large and well-positioned? | |
+| **Hick's Law** | Are choices minimized? Is complexity progressively disclosed? | |
+| **System Status** | Does the spec define feedback for every state transition? | |
+| **Error Prevention** | Are destructive actions protected? Invalid states prevented? | |
+| **Recognition > Recall** | Are options visible rather than requiring memorization? | |
+| **Consistency** | Do similar elements behave identically throughout? | |
+
+**If any check fails, revise the spec before proceeding.**
+
 **Workflow:**
 1. Analyze requirements and generate spec document
-2. **COMMIT**: "Initial specification draft"
-3. Multi-agent review (GPT-5 and Gemini Pro)
-4. Update spec with feedback
-5. **COMMIT**: "Specification with multi-agent review"
-6. Human reviews and provides comments
-7. Iterate until approved
+2. **Run Principles Alignment Check** (above table)
+3. **COMMIT**: "Initial specification draft"
+4. Multi-agent review (GPT-5 and Gemini Pro)
+5. Update spec with feedback
+6. **COMMIT**: "Specification with multi-agent review"
+7. Human reviews and provides comments
+8. Iterate until approved
 
 **Output**: `codev/specs/####-feature-name.md` using SPIDER-UX spec template
 
@@ -172,6 +335,20 @@ Break UI into hierarchical components:
 | **Pages** | `TransactionsPage`, `ProfilePage` | Full routes |
 
 **Build bottom-up**: Implement and test `PrimaryButton` before `UserCard`.
+
+#### Principles-Driven Component Design
+
+When decomposing components, apply these principle-based questions:
+
+| Component Decision | Governing Principle | Question to Ask |
+|-------------------|---------------------|-----------------|
+| Button placement | Fitts's Law | Is this in a thumb-friendly zone? Large enough to tap? |
+| Number of options | Hick's Law | Can we reduce choices? Should we use progressive disclosure? |
+| Form layout | Miller's Law | Is this chunked into ≤7 logical groups? |
+| Navigation structure | Serial Position Effect | Are key items at start/end of lists? |
+| Error handling | Error Prevention | Can we prevent this error instead of just handling it? |
+| Empty states | Visibility of System Status | Does the empty state guide users on what to do next? |
+| Loading states | Peak-End Rule | Is the loading experience smooth? Does completion feel satisfying? |
 
 #### State Management Architecture
 
@@ -277,11 +454,37 @@ Wrap the application in a responsive preview component:
 |---------|-----------|
 | `<button aria-label="Submit Transaction">Submit</button>` | `<div onClick={submit}>Submit</div>` |
 
-**Checklist:**
+**Semantic Checklist:**
 - [ ] All buttons use `<button>` or have `role="button"`
 - [ ] All inputs have associated labels
 - [ ] All interactive elements have `data-testid`
 - [ ] ARIA attributes present where needed
+
+#### Implementation Principles Checklist
+
+**During every implementation decision, verify:**
+
+| Principle | Implementation Check |
+|-----------|---------------------|
+| **Affordances** | Does this button LOOK clickable? Does this link look like a link? |
+| **Signifiers** | Are visual cues clear? (hover states, focus rings, cursor changes) |
+| **White Space** | Is there breathing room? Or is this cramped? |
+| **Mobile-First** | Does this work on 375px width FIRST? |
+| **Touch Targets** | Are tap targets at least 44x44px on mobile? |
+| **Least Surprise** | Does this behave as users expect? Any surprising behaviors to warn about? |
+| **Recognition** | Are options visible? (dropdowns show values, not just "Select...") |
+| **Consistency** | Same color/size/position for same type of element? |
+
+**If implementing a FORM:**
+- [ ] Smart defaults reduce typing
+- [ ] Invalid options are disabled, not error-messaged after
+- [ ] Labels are visible (not just placeholders)
+- [ ] Error messages appear inline, near the problem
+
+**If implementing NAVIGATION:**
+- [ ] Current location is always visible
+- [ ] Back/cancel/undo is always available
+- [ ] Important items at top AND bottom (Serial Position Effect)
 
 #### Step 4: Feature Flags & Environment Configuration
 
@@ -404,6 +607,121 @@ echo "Defense Complete."
 - [ ] Loading states render correctly (with latency)
 - [ ] Error states display correctly
 
+#### 🚨 UI/UX Principles Verification (MANDATORY GATE)
+
+**You CANNOT proceed to Evaluate until ALL principle checks pass.**
+
+Use Playwright MCP to verify each principle holds in the live application:
+
+##### Cognitive Load Verification
+```javascript
+// Verify: Don't Make Me Think
+// Check: No unexplained icons, no ambiguous labels
+const ambiguousElements = await page.locator('[aria-label*="..."], [title*="click here"]').count();
+expect(ambiguousElements).toBe(0); // No vague labels
+
+// Verify: Hick's Law (choice overload)
+// Check: No more than 7±2 visible options in any menu/list at once
+const menuItems = await page.locator('[role="menuitem"]').count();
+expect(menuItems).toBeLessThanOrEqual(9);
+```
+
+##### Interaction Verification
+```javascript
+// Verify: Fitts's Law (touch targets)
+// Check: All clickable elements are at least 44x44px
+const buttons = await page.locator('button, [role="button"], a').all();
+for (const button of buttons) {
+  const box = await button.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+}
+
+// Verify: Affordances & Signifiers
+// Check: Interactive elements have hover/focus states
+await button.hover();
+const cursorStyle = await button.evaluate(el => getComputedStyle(el).cursor);
+expect(cursorStyle).toBe('pointer');
+```
+
+##### System Feedback Verification
+```javascript
+// Verify: Visibility of System Status
+// Check: Loading states actually appear (use MSW delay)
+await page.goto('/data-page');
+await expect(page.getByRole('progressbar')).toBeVisible(); // or skeleton
+
+// Verify: After action completes, confirmation is shown
+await page.getByRole('button', { name: 'Save' }).click();
+await expect(page.getByRole('status')).toContainText(/saved|success/i);
+```
+
+##### Error Prevention Verification
+```javascript
+// Verify: Destructive actions require confirmation
+await page.getByRole('button', { name: 'Delete' }).click();
+await expect(page.getByRole('alertdialog')).toBeVisible();
+await expect(page.getByRole('alertdialog')).toContainText(/confirm|are you sure/i);
+
+// Verify: Invalid inputs are prevented, not just error-messaged
+const submitButton = page.getByRole('button', { name: 'Submit' });
+await expect(submitButton).toBeDisabled(); // When form is invalid
+```
+
+##### Consistency Verification
+```javascript
+// Verify: Same elements behave the same way
+// Check: All primary buttons have same color/size
+const primaryButtons = await page.locator('.btn-primary, [data-variant="primary"]').all();
+const firstStyle = await primaryButtons[0].evaluate(el => ({
+  bg: getComputedStyle(el).backgroundColor,
+  fontSize: getComputedStyle(el).fontSize
+}));
+for (const btn of primaryButtons) {
+  const style = await btn.evaluate(el => ({
+    bg: getComputedStyle(el).backgroundColor,
+    fontSize: getComputedStyle(el).fontSize
+  }));
+  expect(style).toEqual(firstStyle);
+}
+```
+
+##### Navigation Verification
+```javascript
+// Verify: User Control & Freedom
+// Check: Back/cancel is always available
+await expect(page.getByRole('button', { name: /back|cancel|close/i })).toBeVisible();
+
+// Verify: Current location is clear
+const currentNavItem = page.locator('[aria-current="page"], .active');
+await expect(currentNavItem).toBeVisible();
+```
+
+##### Principles Verification Checklist
+
+| Principle | Verification Method | Pass? |
+|-----------|---------------------|-------|
+| Don't Make Me Think | No ambiguous labels/icons | [ ] |
+| Jakob's Law | Follows platform conventions | [ ] |
+| Fitts's Law | Touch targets ≥44px | [ ] |
+| Hick's Law | ≤9 options per menu | [ ] |
+| Miller's Law | Info chunked into ≤7 groups | [ ] |
+| System Status | Loading/success/error states visible | [ ] |
+| User Control | Undo/back/cancel available | [ ] |
+| Error Prevention | Destructive actions confirmed | [ ] |
+| Recognition > Recall | Options visible, not hidden | [ ] |
+| Consistency | Same elements = same behavior | [ ] |
+| White Space | Elements not cramped | [ ] |
+| Mobile-First | Works at 375px width | [ ] |
+
+**If ANY check fails:**
+1. Document the specific violation
+2. Return to Implement phase
+3. Fix the violation
+4. Re-run Defense
+
+**ONLY proceed to Evaluate when ALL checks pass.**
+
 ---
 
 ### E - Evaluate (The Human Gateway)
@@ -428,7 +746,7 @@ vercel --prod
 
 #### The Review Handover
 
-Generate a structured review request:
+Generate a structured review request that **includes Principles Compliance**:
 
 ```markdown
 ## Change Log
@@ -457,9 +775,45 @@ https://project-demo.vercel.app/transaction-history
 | Empty | ✅ |
 | Error | ✅ |
 | Saving | ✅ |
+
+## UI/UX Principles Compliance Report
+
+### Core Laws Verification
+| Law | Status | Evidence |
+|-----|--------|----------|
+| Don't Make Me Think | ✅ | All labels self-explanatory, no ambiguous icons |
+| Jakob's Law | ✅ | Standard table pattern, familiar sort controls |
+| Fitts's Law | ✅ | All buttons ≥44px, primary CTA in thumb zone |
+| Hick's Law | ✅ | 5 filter options (within 7±2), progressive disclosure for advanced |
+| Miller's Law | ✅ | Data chunked into 3 logical groups |
+
+### Interaction Principles
+| Principle | Status | Evidence |
+|-----------|--------|----------|
+| System Status | ✅ | Skeleton loader during fetch, toast on save |
+| Error Prevention | ✅ | Delete requires confirmation dialog |
+| User Control | ✅ | Cancel button on all forms, undo for delete |
+| Recognition > Recall | ✅ | Dropdown shows current selection, recent items visible |
+
+### Visual Principles
+| Principle | Status | Evidence |
+|-----------|--------|----------|
+| Consistency | ✅ | All primary buttons same color/size/font |
+| White Space | ✅ | 16px minimum gaps, no cramped sections |
+| Affordances | ✅ | Buttons have hover states, links are underlined |
+
+### Accessibility Baseline
+| Check | Status |
+|-------|--------|
+| Touch targets ≥44px | ✅ |
+| Mobile-first (375px) | ✅ |
+| Color contrast ratio ≥4.5:1 | ✅ |
+| Focus indicators visible | ✅ |
 ```
 
 **Key Principle**: The reviewer evaluates the EXACT artifact the agent verified—eliminating "works on my machine" syndrome.
+
+**IMPORTANT**: If any principle shows ❌, the agent MUST return to Implement → Defend cycle and fix before presenting to human reviewer.
 
 ---
 
@@ -473,6 +827,40 @@ https://project-demo.vercel.app/transaction-history
 3. Document MSW handler improvements
 4. Capture accessibility insights
 5. Update architecture documentation
+6. **Reflect on UI/UX Principles adherence** (see below)
+
+#### Principles Reflection (MANDATORY)
+
+Document which principles were most relevant and any violations discovered during development:
+
+```markdown
+## UI/UX Principles Reflection
+
+### Principles Most Critical to This Feature
+1. **Hick's Law**: Transaction filters could easily become overwhelming
+   - Decision: Capped visible filters at 5, used progressive disclosure
+   - Outcome: Filter usage increased by 40% in user testing
+
+2. **Peak-End Rule**: Transaction confirmation is the "end" of the flow
+   - Decision: Added satisfying animation + clear summary
+   - Outcome: Reduced support tickets about "did it work?"
+
+### Principle Violations Caught in Defense
+| Principle | Violation | How Fixed |
+|-----------|-----------|-----------|
+| Fitts's Law | Mobile delete button was 32px | Increased to 48px with padding |
+| System Status | No feedback during bulk operations | Added progress bar + count |
+| Error Prevention | Batch delete had no confirmation | Added confirmation modal |
+
+### Principles to Emphasize in Future Work
+- This feature revealed that **Loss Aversion** is powerful for undo messaging
+- **Zeigarnik Effect** worked well for multi-step forms—keep using progress indicators
+
+### Principle Conflicts Encountered
+- **Hick's Law vs Feature Requests**: Users wanted 12 filter options
+  - Resolution: Used progressive disclosure (5 common + "More Filters")
+  - Lesson: Defend Hick's Law with data, offer progressive disclosure as compromise
+```
 
 **Output**: `codev/reviews/####-feature-name.md`
 
@@ -595,6 +983,22 @@ http.get('/api/data', ({ request }) => {
 | Untestable UI | Enforce semantic contracts (ARIA roles) |
 | Manual verification dependency | Mandatory Defense Gate before human review |
 
+### Principle-Related Pitfalls
+
+| Pitfall | Principle Violated | Solution |
+|---------|-------------------|----------|
+| "Clever" unconventional UI | Jakob's Law | Follow conventions; novelty ≠ usability |
+| Too many options shown at once | Hick's Law | Progressive disclosure, max 7±2 items |
+| Tiny touch targets | Fitts's Law | Minimum 44x44px for all interactive elements |
+| Silent state changes | System Status | Always show loading, success, error feedback |
+| No undo for actions | User Control | Add cancel/undo for all reversible actions |
+| Memorization required | Recognition > Recall | Show options; use autocomplete, recents |
+| Inconsistent button styles | Consistency | Use design tokens; same action = same style |
+| Cramped layouts | White Space | Minimum 16px gaps; resist feature stuffing |
+| Desktop-first design | Mobile-First | Design at 375px first, scale up |
+| Confusing icons without labels | Don't Make Me Think | Labels > icons; or icon + tooltip |
+| Bland confirmation screens | Peak-End Rule | Make endings satisfying; celebrate completion |
+
 ---
 
 ## Templates
@@ -618,7 +1022,69 @@ This protocol evolves based on learnings:
 
 ## References
 
+### Technical References
 - [Playwright MCP Server](https://github.com/microsoft/playwright-mcp)
 - [Mock Service Worker (MSW)](https://github.com/mswjs/msw)
 - [Atomic Design Methodology](https://bradfrost.com/blog/post/atomic-web-design/)
 - [WCAG Accessibility Guidelines](https://www.w3.org/WAI/standards-guidelines/wcag/)
+
+### UI/UX Principles References
+- **Don't Make Me Think** - Steve Krug's seminal book on web usability
+- **The Design of Everyday Things** - Don Norman (Affordances, Gulf of Execution/Evaluation)
+- **Laws of UX** - Jon Yablonski ([lawsofux.com](https://lawsofux.com))
+- **Nielsen's 10 Usability Heuristics** - Jakob Nielsen, Nielsen Norman Group
+- **Fitts's Law** - Paul Fitts, 1954 (target acquisition time)
+- **Hick's Law** - William Hick, 1952 (choice-reaction time)
+- **Miller's Law** - George Miller, 1956 ("The Magical Number Seven")
+- **Peak-End Rule** - Daniel Kahneman (memory and experience)
+- **Zeigarnik Effect** - Bluma Zeigarnik (incomplete tasks)
+
+### Process & Methodology References
+- **User-Centered Design** - ISO 9241-210, Don Norman's advocacy
+- **Jobs To Be Done** - Clayton Christensen, Tony Ulwick (Outcome-Driven Innovation)
+- **Double Diamond** - British Design Council, 2005
+- **Usability Testing** - Jakob Nielsen ("5 users find 85% of problems")
+
+---
+
+## Appendix: Quick Principles Reference Card
+
+Print this and keep visible during development:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│           SPIDER-UX PRINCIPLES QUICK CARD               │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  🧠 COGNITIVE                                           │
+│     • Self-evident (no thinking required)               │
+│     • Familiar (Jakob's Law - match expectations)       │
+│     • Chunked (7±2 items max - Miller's Law)            │
+│     • Progressive (reveal complexity gradually)         │
+│                                                         │
+│  👆 INTERACTION                                         │
+│     • Big targets (44px min - Fitts's Law)              │
+│     • Few choices (minimize options - Hick's Law)       │
+│     • Looks like what it does (affordances)             │
+│     • No surprises (Least Surprise)                     │
+│                                                         │
+│  💬 FEEDBACK                                            │
+│     • Always show status (loading, saving, done)        │
+│     • Prevent errors (disable invalid, confirm delete)  │
+│     • Enable recovery (undo, cancel, back)              │
+│     • End well (Peak-End Rule)                          │
+│                                                         │
+│  👁️ VISUAL                                              │
+│     • Consistent (same = same)                          │
+│     • Breathe (white space is good)                     │
+│     • Mobile first (375px → up)                         │
+│     • Scan-friendly (F/Z patterns)                      │
+│                                                         │
+│  ❌ NEVER                                               │
+│     • Require memorization                              │
+│     • Surprise users                                    │
+│     • Block without feedback                            │
+│     • Ignore conventions                                │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
