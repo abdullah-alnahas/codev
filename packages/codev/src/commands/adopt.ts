@@ -13,10 +13,12 @@ import { getTemplatesDir } from '../lib/templates.js';
 import { confirm } from '../lib/cli-prompts.js';
 import {
   createUserDirs,
+  createProjectsDir,
   copyProjectlist,
   copyProjectlistArchive,
   copyConsultTypes,
   copyResourceTemplates,
+  copyProtocols,
   copyRootFiles,
   updateGitignore,
 } from '../lib/scaffold.js';
@@ -114,6 +116,13 @@ export async function adopt(options: AdoptOptions = {}): Promise<void> {
     fileCount++;
   }
 
+  // Create projects directory for porch state files - skip existing
+  const projectsDirResult = createProjectsDir(targetDir, { skipExisting: true });
+  if (projectsDirResult.created) {
+    console.log(chalk.green('  +'), 'codev/projects/');
+    fileCount++;
+  }
+
   // Create projectlist.md - skip if exists
   const projectlistResult = copyProjectlist(targetDir, skeletonDir, { skipExisting: true });
   if (projectlistResult.copied) {
@@ -143,6 +152,17 @@ export async function adopt(options: AdoptOptions = {}): Promise<void> {
   }
   for (const file of consultTypesResult.copied) {
     console.log(chalk.green('  +'), `codev/consult-types/${file}`);
+    fileCount++;
+  }
+
+  // Copy protocol definitions (required for porch orchestration) - skip existing
+  const protocolsResult = copyProtocols(targetDir, skeletonDir, { skipExisting: true });
+  if (protocolsResult.directoryCreated) {
+    console.log(chalk.green('  +'), 'codev/protocols/');
+    fileCount++;
+  }
+  for (const protocol of protocolsResult.copied) {
+    console.log(chalk.green('  +'), `codev/protocols/${protocol}`);
     fileCount++;
   }
 

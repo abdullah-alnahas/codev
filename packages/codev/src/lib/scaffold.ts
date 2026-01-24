@@ -341,3 +341,122 @@ export function updateGitignore(targetDir: string): UpdateGitignoreResult {
   fs.appendFileSync(gitignorePath, '\n' + CODEV_GITIGNORE_ENTRIES);
   return { updated: true, created: false, alreadyPresent: false };
 }
+
+interface CreateProjectsDirOptions {
+  skipExisting?: boolean;
+}
+
+interface CreateProjectsDirResult {
+  created: boolean;
+  skipped: boolean;
+}
+
+/**
+ * Create codev/projects/ directory for porch state files
+ */
+export function createProjectsDir(
+  targetDir: string,
+  options: CreateProjectsDirOptions = {}
+): CreateProjectsDirResult {
+  const { skipExisting = false } = options;
+  const projectsDir = path.join(targetDir, 'codev', 'projects');
+
+  if (skipExisting && fs.existsSync(projectsDir)) {
+    return { created: false, skipped: true };
+  }
+
+  fs.mkdirSync(projectsDir, { recursive: true });
+  fs.writeFileSync(path.join(projectsDir, '.gitkeep'), '');
+  return { created: true, skipped: false };
+}
+
+interface CopyProtocolsOptions {
+  skipExisting?: boolean;
+}
+
+interface CopyProtocolsResult {
+  copied: string[];
+  skipped: string[];
+  directoryCreated: boolean;
+}
+
+/**
+ * Recursively copy a directory
+ */
+function copyDirRecursive(src: string, dest: string): void {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirRecursive(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Copy protocol definitions from skeleton to codev/protocols/
+ * Required for porch orchestration
+ */
+export function copyProtocols(
+  targetDir: string,
+  skeletonDir: string,
+  options: CopyProtocolsOptions = {}
+): CopyProtocolsResult {
+  const { skipExisting = false } = options;
+  const protocolsDir = path.join(targetDir, 'codev', 'protocols');
+  const srcDir = path.join(skeletonDir, 'protocols');
+  const copied: string[] = [];
+  const skipped: string[] = [];
+  let directoryCreated = false;
+
+  // Ensure protocols directory exists
+  if (!fs.existsSync(protocolsDir)) {
+    fs.mkdirSync(protocolsDir, { recursive: true });
+    directoryCreated = true;
+  }
+
+  // If source directory doesn't exist, return early
+  if (!fs.existsSync(srcDir)) {
+    return { copied, skipped, directoryCreated };
+  }
+
+  // Copy each protocol directory
+  const protocols = fs.readdirSync(srcDir, { withFileTypes: true });
+  for (const entry of protocols) {
+    if (!entry.isDirectory()) {
+      // Copy top-level files (like protocol-schema.json)
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(protocolsDir, entry.name);
+
+      if (skipExisting && fs.existsSync(destPath)) {
+        skipped.push(entry.name);
+        continue;
+      }
+
+      fs.copyFileSync(srcPath, destPath);
+      copied.push(entry.name);
+      continue;
+    }
+
+    const destProtocolDir = path.join(protocolsDir, entry.name);
+    const srcProtocolDir = path.join(srcDir, entry.name);
+
+    if (skipExisting && fs.existsSync(destProtocolDir)) {
+      skipped.push(entry.name + '/');
+      continue;
+    }
+
+    copyDirRecursive(srcProtocolDir, destProtocolDir);
+    copied.push(entry.name + '/');
+  }
+
+  return { copied, skipped, directoryCreated };
+}
